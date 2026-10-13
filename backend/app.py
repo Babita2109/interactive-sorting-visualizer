@@ -5,9 +5,8 @@ from pymongo import MongoClient
 from datetime import datetime, timezone
 import time
 
-# -----------------------------
-# Flask and MongoDB setup
-# -----------------------------
+
+# Flask and MongoDB 
 
 app = Flask(__name__)
 CORS(app)
@@ -21,9 +20,8 @@ db = client["sorting_visualizer"]
 history_collection = db["sorting_history"]
 
 
-# -----------------------------
 # MongoDB history helper
-# -----------------------------
+
 
 def save_sorting_history(result):
     try:
@@ -47,9 +45,9 @@ def finish_result(result):
     return jsonify(result)
 
 
-# -----------------------------
+
 # Input validation helpers
-# -----------------------------
+
 
 def get_array():
     data = request.get_json(silent=True)
@@ -88,9 +86,9 @@ def is_sorted(array):
     )
 
 
-# -----------------------------
+
 # Home route
-# -----------------------------
+
 
 @app.route("/", methods=["GET"])
 def home():
@@ -100,9 +98,9 @@ def home():
     })
 
 
-# -----------------------------
+
 # MongoDB connection test
-# -----------------------------
+
 
 @app.route("/api/db-test", methods=["GET"])
 def db_test():
@@ -122,9 +120,9 @@ def db_test():
         }), 500
 
 
-# -----------------------------
+
 # Bubble Sort
-# -----------------------------
+
 
 @app.route("/api/sort/bubble", methods=["POST"])
 def bubble_sort():
@@ -172,9 +170,8 @@ def bubble_sort():
     return finish_result(result)
 
 
-# -----------------------------
+
 # Selection Sort
-# -----------------------------
 
 @app.route("/api/sort/selection", methods=["POST"])
 def selection_sort():
@@ -221,9 +218,9 @@ def selection_sort():
     return finish_result(result)
 
 
-# -----------------------------
+
 # Insertion Sort
-# -----------------------------
+
 
 @app.route("/api/sort/insertion", methods=["POST"])
 def insertion_sort():
@@ -272,9 +269,8 @@ def insertion_sort():
     return finish_result(result)
 
 
-# -----------------------------
 # Merge Sort
-# -----------------------------
+
 
 @app.route("/api/sort/merge", methods=["POST"])
 def merge_sort():
@@ -335,10 +331,8 @@ def merge_sort():
 
     return finish_result(result)
 
-
-# -----------------------------
 # Quick Sort
-# -----------------------------
+
 
 @app.route("/api/sort/quick", methods=["POST"])
 def quick_sort():
