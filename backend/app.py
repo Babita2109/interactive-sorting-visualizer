@@ -4,10 +4,9 @@ from flask_cors import CORS
 from pymongo import MongoClient
 from datetime import datetime, timezone
 import time
+import math
 
-
-# Flask and MongoDB 
-
+# Flask and MongoDB setup
 app = Flask(__name__)
 CORS(app)
 
@@ -21,8 +20,6 @@ history_collection = db["sorting_history"]
 
 
 # MongoDB history helper
-
-
 def save_sorting_history(result):
     try:
         document = result.copy()
@@ -39,16 +36,13 @@ def save_sorting_history(result):
 
 
 def finish_result(result):
-    """Save a result and return it to the client."""
+    """Save result and return JSON response."""
     saved = save_sorting_history(result)
     result["saved_to_database"] = saved
     return jsonify(result)
 
 
-
 # Input validation helpers
-
-
 def get_array():
     data = request.get_json(silent=True)
 
@@ -57,12 +51,18 @@ def get_array():
 
     array = data.get("array")
 
-    if not isinstance(array, list):
+    # Reject missing or empty arrays
+    if not isinstance(array, list) or len(array) == 0:
         return None, None
 
-    # bool is deliberately excluded, even though bool is a Python int subtype.
-    if not all(type(value) in (int, float) for value in array):
-        return None, None
+    # Accept only finite integers and floats
+    # Booleans, NaN and Infinity are rejected
+    for value in array:
+        if type(value) not in (int, float):
+            return None, None
+
+        if type(value) is float and not math.isfinite(value):
+            return None, None
 
     return data, array
 
@@ -76,7 +76,19 @@ def get_target(data):
     if type(target) not in (int, float):
         return None, False
 
+    if type(target) is float and not math.isfinite(target):
+        return None, False
+
     return target, True
+
+
+def invalid_array_response():
+    return jsonify({
+        "error": (
+            "Please provide a non-empty array "
+            "containing only finite numbers."
+        )
+    }), 400
 
 
 def is_sorted(array):
@@ -86,10 +98,7 @@ def is_sorted(array):
     )
 
 
-
 # Home route
-
-
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
@@ -98,10 +107,7 @@ def home():
     })
 
 
-
 # MongoDB connection test
-
-
 @app.route("/api/db-test", methods=["GET"])
 def db_test():
     try:
@@ -114,24 +120,21 @@ def db_test():
         }), 200
 
     except Exception as e:
+        print("MongoDB connection failed:", str(e))
+
         return jsonify({
             "error": "MongoDB connection failed",
             "details": str(e)
         }), 500
 
 
-
 # Bubble Sort
-
-
 @app.route("/api/sort/bubble", methods=["POST"])
 def bubble_sort():
     data, array = get_array()
 
     if array is None:
-        return jsonify({
-            "error": "Please provide an array of numbers."
-        }), 400
+        return invalid_array_response()
 
     arr = array.copy()
     n = len(arr)
@@ -163,24 +166,20 @@ def bubble_sort():
         "comparisons": comparisons,
         "swaps": swaps,
         "execution_time_ms": round(execution_time, 4),
-        "time_complexity": "O(n^2) worst case",
+        "time_complexity": "O(n^2) worst case, O(n) best case",
         "space_complexity": "O(1)"
     }
 
     return finish_result(result)
 
 
-
 # Selection Sort
-
 @app.route("/api/sort/selection", methods=["POST"])
 def selection_sort():
     data, array = get_array()
 
     if array is None:
-        return jsonify({
-            "error": "Please provide an array of numbers."
-        }), 400
+        return invalid_array_response()
 
     arr = array.copy()
     n = len(arr)
@@ -189,7 +188,7 @@ def selection_sort():
 
     start_time = time.perf_counter()
 
-    for i in range(n):
+    for i in range(n - 1):
         min_index = i
 
         for j in range(i + 1, n):
@@ -218,18 +217,13 @@ def selection_sort():
     return finish_result(result)
 
 
-
 # Insertion Sort
-
-
 @app.route("/api/sort/insertion", methods=["POST"])
 def insertion_sort():
     data, array = get_array()
 
     if array is None:
-        return jsonify({
-            "error": "Please provide an array of numbers."
-        }), 400
+        return invalid_array_response()
 
     arr = array.copy()
     comparisons = 0
@@ -260,9 +254,9 @@ def insertion_sort():
         "original_array": array,
         "sorted_array": arr,
         "comparisons": comparisons,
-        "swaps": shifts,
+        "shifts": shifts,
         "execution_time_ms": round(execution_time, 4),
-        "time_complexity": "O(n^2) worst case",
+        "time_complexity": "O(n^2) worst case, O(n) best case",
         "space_complexity": "O(1)"
     }
 
@@ -270,16 +264,12 @@ def insertion_sort():
 
 
 # Merge Sort
-
-
 @app.route("/api/sort/merge", methods=["POST"])
 def merge_sort():
     data, array = get_array()
 
     if array is None:
-        return jsonify({
-            "error": "Please provide an array of numbers."
-        }), 400
+        return invalid_array_response()
 
     arr = array.copy()
     comparisons = 0
@@ -331,27 +321,22 @@ def merge_sort():
 
     return finish_result(result)
 
-# Quick Sort
 
-
+# Quick Sort (iterative version)
+# Avoids recursive call stack overflow on large arrays.
 @app.route("/api/sort/quick", methods=["POST"])
 def quick_sort():
     data, array = get_array()
 
     if array is None:
-        return jsonify({
-            "error": "Please provide an array of numbers."
-        }), 400
+        return invalid_array_response()
 
     arr = array.copy()
     comparisons = 0
     swaps = 0
 
-    def quick_sort_recursive(low, high):
+    def partition(low, high):
         nonlocal comparisons, swaps
-
-        if low >= high:
-            return
 
         pivot = arr[high]
         i = low - 1
@@ -370,16 +355,40 @@ def quick_sort():
 
         if pivot_index != high:
             arr[pivot_index], arr[high] = (
-                arr[high],
-                arr[pivot_index]
+                arr[high], arr[pivot_index]
             )
             swaps += 1
 
-        quick_sort_recursive(low, pivot_index - 1)
-        quick_sort_recursive(pivot_index + 1, high)
+        return pivot_index
 
     start_time = time.perf_counter()
-    quick_sort_recursive(0, len(arr) - 1)
+
+    # Explicit stack instead of recursive calls
+    stack = [(0, len(arr) - 1)]
+
+    while stack:
+        low, high = stack.pop()
+
+        while low < high:
+            pivot_index = partition(low, high)
+
+            left_size = pivot_index - low
+            right_size = high - pivot_index
+
+            # Process the smaller partition immediately
+            # and save the larger partition on the stack.
+            if left_size < right_size:
+                if pivot_index + 1 < high:
+                    stack.append((pivot_index + 1, high))
+
+                high = pivot_index - 1
+
+            else:
+                if low < pivot_index - 1:
+                    stack.append((low, pivot_index - 1))
+
+                low = pivot_index + 1
+
     execution_time = (time.perf_counter() - start_time) * 1000
 
     result = {
@@ -390,30 +399,25 @@ def quick_sort():
         "swaps": swaps,
         "execution_time_ms": round(execution_time, 4),
         "time_complexity": "O(n log n) average, O(n^2) worst case",
-        "space_complexity": "O(log n) average recursion stack"
+        "space_complexity": "O(log n) average stack"
     }
 
     return finish_result(result)
 
 
-# -----------------------------
 # Linear Search
-# -----------------------------
-
 @app.route("/api/search/linear", methods=["POST"])
 def linear_search():
     data, array = get_array()
 
     if array is None:
-        return jsonify({
-            "error": "Please provide an array of numbers."
-        }), 400
+        return invalid_array_response()
 
     target, valid_target = get_target(data)
 
     if not valid_target:
         return jsonify({
-            "error": "Please provide a numeric target."
+            "error": "Please provide a finite numeric target."
         }), 400
 
     comparisons = 0
@@ -445,29 +449,27 @@ def linear_search():
     return finish_result(result)
 
 
-# -----------------------------
 # Binary Search
-# -----------------------------
-
 @app.route("/api/search/binary", methods=["POST"])
 def binary_search():
     data, array = get_array()
 
     if array is None:
-        return jsonify({
-            "error": "Please provide an array of numbers."
-        }), 400
+        return invalid_array_response()
 
     if not is_sorted(array):
         return jsonify({
-            "error": "Binary Search requires an array sorted in ascending order."
+            "error": (
+                "Binary Search requires an array "
+                "sorted in ascending order."
+            )
         }), 400
 
     target, valid_target = get_target(data)
 
     if not valid_target:
         return jsonify({
-            "error": "Please provide a numeric target."
+            "error": "Please provide a finite numeric target."
         }), 400
 
     low = 0
@@ -484,8 +486,10 @@ def binary_search():
         if array[mid] == target:
             found_index = mid
             break
+
         elif array[mid] < target:
             low = mid + 1
+
         else:
             high = mid - 1
 
@@ -506,10 +510,7 @@ def binary_search():
     return finish_result(result)
 
 
-# -----------------------------
-# Get saved sorting history
-# -----------------------------
-
+# Get saved sorting and searching history
 @app.route("/api/history", methods=["GET"])
 def get_history():
     try:
@@ -533,16 +534,15 @@ def get_history():
         }), 200
 
     except Exception as e:
+        print("History fetch error:", e)
+
         return jsonify({
             "error": "Could not fetch history",
             "details": str(e)
         }), 500
 
 
-# -----------------------------
 # Start server
-# -----------------------------
-
 if __name__ == "__main__":
     app.run(
         debug=True,
