@@ -542,6 +542,45 @@ def get_history():
         }), 500
 
 
+# --- Naya Route sirf Linked List & Tree ke liye (Purane routes waise hi rahenge) ---
+@app.route('/api/ds/traverse', methods=['POST'])
+def ds_traverse():
+    data = request.json or {}
+    topic = data.get('topic')  # 'tree', 'graph', 'linked-list'
+    nodes = data.get('nodes', [])
+    
+    return jsonify({
+        "status": "success",
+        "topic": topic,
+        "nodes": nodes
+    }), 200
+
+@app.route('/api/tree/inorder', methods=['POST'])
+def tree_inorder():
+    data = request.json or {}
+    nodes = data.get('nodes', [4, 2, 7, 1, 3, 6, 9])
+    sorted_nodes = sorted(nodes)
+
+    steps = []
+    stack = []
+    for val in sorted_nodes:
+        stack.append(f"inorder({val})")
+        steps.append({
+            "action": "VISIT",
+            "val": val,
+            "call_stack": list(stack),
+            "code_line": 3
+        })
+        stack.pop()
+
+    return jsonify({
+        "status": "success",
+        "algorithm": "inorder_traversal",
+        "result": sorted_nodes,
+        "steps": steps
+    }), 200
+
+
 # Start server
 if __name__ == "__main__":
     app.run(

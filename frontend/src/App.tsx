@@ -3,13 +3,35 @@ import axios from 'axios';
 import './style.css';
 
 type Algorithm = 'bubble' | 'selection' | 'insertion' | 'merge';
-type ActiveTab = 'visualizer' | 'operations' | 'notations';
+type ActiveTab = 'visualizer' | 'operations' | 'notations' | 'trees_graphs_ll';
 
 interface Frame {
   array: { val: number; status: 'default' | 'compare' | 'swap' | 'sorted' }[];
   explanation: string;
   comparisons: number;
   swaps: number;
+}
+
+// Data Structure Interfaces
+interface TreeNode {
+  val: number;
+  status: 'default' | 'active' | 'swapping' | 'visited';
+  x: number;
+  y: number;
+  left: TreeNode | null;
+  right: TreeNode | null;
+}
+
+interface GraphNode {
+  id: string;
+  x: number;
+  y: number;
+  status: 'default' | 'active' | 'visited';
+}
+
+interface ListNode {
+  val: number;
+  status: 'default' | 'active' | 'visited' | 'delete';
 }
 
 export default function App() {
@@ -40,7 +62,574 @@ export default function App() {
 
   const timerRef = useRef<number | null>(null);
 
-  // Generate Frame Timeline with English Explanations and Pseudocode
+  // ================= TREES, GRAPHS & LINKED LIST STATES =================
+  const reelCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [dsTopic, setDsTopic] = useState<'invert' | 'inorder' | 'bfs-queue' | 'graph-bfs' | 'linked-list'>('invert');
+  const [reelPlaying, setReelPlaying] = useState<boolean>(false);
+  const [reelStack, setReelStack] = useState<string[]>([]);
+  const [reelQueue, setReelQueue] = useState<string[]>([]);
+  const [traversalOutput, setTraversalOutput] = useState<string[]>([]);
+  const [activeCodeLine, setActiveCodeLine] = useState<number>(0);
+  const reelCancelled = useRef<boolean>(false);
+
+  // Custom array/nodes input state
+  const [customTreeInput, setCustomTreeInput] = useState<string>('4, 2, 7, 1, 3, 6, 9');
+
+  // Linked List State
+  const [linkedList, setLinkedList] = useState<ListNode[]>([
+    { val: 12, status: 'default' },
+    { val: 45, status: 'default' },
+    { val: 78, status: 'default' },
+    { val: 99, status: 'default' },
+  ]);
+  const [llInputVal, setLlInputVal] = useState<string>('');
+
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+  // Default Tree Root Ref
+  const treeRoot = useRef<TreeNode | null>(null);
+
+  // BST Insertion helper
+  const insertIntoBST = (rootNode: TreeNode | null, val: number): TreeNode => {
+    if (!rootNode) {
+      return {
+        val,
+        status: 'default',
+        x: 220,
+        y: 40,
+        left: null,
+        right: null,
+      };
+    }
+    if (val < rootNode.val) {
+      rootNode.left = insertIntoBST(rootNode.left, val);
+    } else if (val > rootNode.val) {
+      rootNode.right = insertIntoBST(rootNode.right, val);
+    }
+    return rootNode;
+  };
+
+  // Node position recalculation
+  const updateTreeCoordinates = (node: TreeNode | null, x: number, y: number, gap: number) => {
+    if (!node) return;
+    node.x = x;
+    node.y = y;
+    updateTreeCoordinates(node.left, x - gap, y + 55, gap / 1.85);
+    updateTreeCoordinates(node.right, x + gap, y + 55, gap / 1.85);
+  };
+
+  const handleBuildCustomArray = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const parsed = customTreeInput
+      .split(',')
+      .map((item) => parseInt(item.trim(), 10))
+      .filter((n) => !isNaN(n));
+
+    if (parsed.length === 0) {
+      alert('Kripya valid numbers enter karein (jaise: 45, 20, 75, 10, 30)');
+      return;
+    }
+
+    if (dsTopic === 'linked-list') {
+      setLinkedList(parsed.slice(0, 6).map((n) => ({ val: n, status: 'default' })));
+      handleResetReel();
+      return;
+    }
+
+    let newRoot: TreeNode | null = null;
+    parsed.forEach((val) => {
+      newRoot = insertIntoBST(newRoot, val);
+    });
+
+    updateTreeCoordinates(newRoot, 220, 40, 85);
+    treeRoot.current = newRoot;
+    handleResetReel();
+    drawReelCanvas();
+  };
+
+  const initTreeData = () => {
+    treeRoot.current = {
+      val: 4,
+      status: 'default',
+      x: 220,
+      y: 40,
+      left: {
+        val: 2,
+        status: 'default',
+        x: 130,
+        y: 100,
+        left: { val: 1, status: 'default', x: 85, y: 160, left: null, right: null },
+        right: { val: 3, status: 'default', x: 175, y: 160, left: null, right: null },
+      },
+      right: {
+        val: 7,
+        status: 'default',
+        x: 310,
+        y: 100,
+        left: { val: 6, status: 'default', x: 265, y: 160, left: null, right: null },
+        right: { val: 9, status: 'default', x: 355, y: 160, left: null, right: null },
+      },
+    };
+    drawReelCanvas();
+  };
+
+  // Graph Data
+  const graphNodes = useRef<GraphNode[]>([
+    { id: '1', x: 100, y: 60, status: 'default' },
+    { id: '2', x: 220, y: 40, status: 'default' },
+    { id: '3', x: 340, y: 60, status: 'default' },
+    { id: '4', x: 140, y: 160, status: 'default' },
+    { id: '5', x: 300, y: 160, status: 'default' },
+  ]);
+  const graphEdges = [
+    ['1', '2'], ['2', '3'], ['1', '4'], ['2', '5'], ['4', '5'], ['3', '5']
+  ];
+
+  // Draw Tree on Canvas
+  const drawTreeOnCanvas = (ctx: CanvasRenderingContext2D, node: TreeNode | null) => {
+    if (!node) return;
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#475569';
+
+    if (node.left) {
+      ctx.beginPath();
+      ctx.moveTo(node.x, node.y);
+      ctx.lineTo(node.left.x, node.left.y);
+      ctx.stroke();
+      drawTreeOnCanvas(ctx, node.left);
+    }
+    if (node.right) {
+      ctx.beginPath();
+      ctx.moveTo(node.x, node.y);
+      ctx.lineTo(node.right.x, node.right.y);
+      ctx.stroke();
+      drawTreeOnCanvas(ctx, node.right);
+    }
+
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, 16, 0, 2 * Math.PI);
+    if (node.status === 'active') ctx.fillStyle = '#f59e0b';
+    else if (node.status === 'swapping') ctx.fillStyle = '#ef4444';
+    else if (node.status === 'visited') ctx.fillStyle = '#10b981';
+    else ctx.fillStyle = '#0284c7';
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(node.val.toString(), node.x, node.y);
+  };
+
+  // Draw Graph on Canvas
+  const drawGraphOnCanvas = (ctx: CanvasRenderingContext2D) => {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#475569';
+    graphEdges.forEach(([u, v]) => {
+      const n1 = graphNodes.current.find((n) => n.id === u);
+      const n2 = graphNodes.current.find((n) => n.id === v);
+      if (n1 && n2) {
+        ctx.beginPath();
+        ctx.moveTo(n1.x, n1.y);
+        ctx.lineTo(n2.x, n2.y);
+        ctx.stroke();
+      }
+    });
+
+    graphNodes.current.forEach((node) => {
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 18, 0, 2 * Math.PI);
+      if (node.status === 'active') ctx.fillStyle = '#f59e0b';
+      else if (node.status === 'visited') ctx.fillStyle = '#10b981';
+      else ctx.fillStyle = '#6366f1';
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(node.id, node.x, node.y);
+    });
+  };
+
+  // Draw Linked List on Canvas
+  const drawLinkedListOnCanvas = (ctx: CanvasRenderingContext2D) => {
+    let startX = 35;
+    const startY = 95;
+    const boxW = 50;
+    const boxH = 34;
+
+    linkedList.forEach((node, idx) => {
+      ctx.fillStyle = node.status === 'active' ? '#f59e0b' : node.status === 'visited' ? '#10b981' : node.status === 'delete' ? '#ef4444' : '#1e293b';
+      ctx.fillRect(startX, startY, boxW, boxH);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(startX, startY, boxW, boxH);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(node.val.toString(), startX + boxW / 2, startY + boxH / 2);
+
+      if (idx < linkedList.length - 1) {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(startX + boxW, startY + boxH / 2);
+        ctx.lineTo(startX + boxW + 24, startY + boxH / 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(startX + boxW + 24, startY + boxH / 2);
+        ctx.lineTo(startX + boxW + 17, startY + boxH / 2 - 4);
+        ctx.lineTo(startX + boxW + 17, startY + boxH / 2 + 4);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '11px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('-> NULL', startX + boxW + 6, startY + boxH / 2);
+      }
+
+      startX += boxW + 30;
+    });
+  };
+
+  const drawReelCanvas = () => {
+    const canvas = reelCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (dsTopic === 'graph-bfs') {
+      drawGraphOnCanvas(ctx);
+    } else if (dsTopic === 'linked-list') {
+      drawLinkedListOnCanvas(ctx);
+    } else {
+      drawTreeOnCanvas(ctx, treeRoot.current);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'trees_graphs_ll') {
+      if (!treeRoot.current) {
+        initTreeData();
+      } else {
+        drawReelCanvas();
+      }
+    }
+  }, [activeTab, dsTopic, linkedList]);
+
+  // Tree Invert Algorithm (Recursion)
+  const runInvertReel = async () => {
+    reelCancelled.current = false;
+    setReelPlaying(true);
+    setTraversalOutput([]);
+
+    async function invert(node: TreeNode | null) {
+      if (!node || reelCancelled.current) {
+        setActiveCodeLine(2);
+        return;
+      }
+      setActiveCodeLine(1);
+      node.status = 'active';
+      setReelStack((prev) => [`invert(${node.val})`, ...prev]);
+      drawReelCanvas();
+      await sleep(600);
+
+      setActiveCodeLine(3);
+      node.status = 'swapping';
+      const temp = node.left;
+      node.left = node.right;
+      node.right = temp;
+
+      if (node.left && node.right) {
+        const tempX = node.left.x;
+        node.left.x = node.right.x;
+        node.right.x = tempX;
+      }
+      drawReelCanvas();
+      await sleep(600);
+
+      node.status = 'visited';
+      drawReelCanvas();
+
+      setActiveCodeLine(4);
+      await invert(node.left);
+
+      setActiveCodeLine(5);
+      await invert(node.right);
+
+      setReelStack((prev) => prev.filter((s) => s !== `invert(${node.val})`));
+    }
+
+    await invert(treeRoot.current);
+    setActiveCodeLine(6);
+    setReelPlaying(false);
+  };
+
+  // ================= BACKEND INTEGRATED INORDER TRAVERSAL =================
+  const runInorderReelWithBackend = async () => {
+    reelCancelled.current = false;
+    setReelPlaying(true);
+    setTraversalOutput([]);
+
+    const parsedNodes = customTreeInput
+      .split(',')
+      .map((item) => parseInt(item.trim(), 10))
+      .filter((n) => !isNaN(n));
+
+    const nodesToSend = parsedNodes.length > 0 ? parsedNodes : [4, 2, 7, 1, 3, 6, 9];
+
+    try {
+      // Flask Backend Call
+      const res = await axios.post('http://127.0.0.1:5000/api/tree/inorder', {
+        nodes: nodesToSend,
+      });
+
+      const steps = res.data.steps;
+      const visited: string[] = [];
+
+      for (let step of steps) {
+        if (reelCancelled.current) break;
+
+        setActiveCodeLine(step.code_line);
+        setReelStack(step.call_stack);
+        visited.push(step.val.toString());
+        setTraversalOutput([...visited]);
+
+        // Highlight active node on canvas
+        const highlightNode = (node: TreeNode | null, val: number) => {
+          if (!node) return;
+          node.status = node.val === val ? 'active' : 'visited';
+          highlightNode(node.left, val);
+          highlightNode(node.right, val);
+        };
+
+        highlightNode(treeRoot.current, step.val);
+        drawReelCanvas();
+        await sleep(700);
+      }
+    } catch (err) {
+      console.warn('Backend connection failed, running locally:', err);
+      // Fallback local logic
+      const visitedFallback: string[] = [];
+      async function inorder(node: TreeNode | null) {
+        if (!node || reelCancelled.current) return;
+        setReelStack((prev) => [`inorder(${node.val})`, ...prev]);
+        setActiveCodeLine(2);
+        await inorder(node.left);
+
+        node.status = 'active';
+        setActiveCodeLine(3);
+        visitedFallback.push(node.val.toString());
+        setTraversalOutput([...visitedFallback]);
+        drawReelCanvas();
+        await sleep(700);
+
+        node.status = 'visited';
+        drawReelCanvas();
+
+        setActiveCodeLine(4);
+        await inorder(node.right);
+        setReelStack((prev) => prev.filter((s) => s !== `inorder(${node.val})`));
+      }
+      await inorder(treeRoot.current);
+    } finally {
+      setReelPlaying(false);
+    }
+  };
+
+  const runBFSQueueReel = async () => {
+    if (!treeRoot.current) return;
+    reelCancelled.current = false;
+    setReelPlaying(true);
+    const queue: TreeNode[] = [treeRoot.current];
+    const visited: string[] = [];
+    setReelQueue([treeRoot.current.val.toString()]);
+    setTraversalOutput([]);
+
+    while (queue.length > 0 && !reelCancelled.current) {
+      setActiveCodeLine(3);
+      const curr = queue.shift()!;
+      curr.status = 'active';
+      visited.push(curr.val.toString());
+      setTraversalOutput([...visited]);
+      drawReelCanvas();
+      await sleep(700);
+
+      curr.status = 'visited';
+      if (curr.left) {
+        queue.push(curr.left);
+        setActiveCodeLine(4);
+      }
+      if (curr.right) {
+        queue.push(curr.right);
+        setActiveCodeLine(5);
+      }
+      setReelQueue(queue.map((n) => n.val.toString()));
+      drawReelCanvas();
+      await sleep(400);
+    }
+    setReelPlaying(false);
+  };
+
+  const runGraphBFSReel = async () => {
+    reelCancelled.current = false;
+    setReelPlaying(true);
+    graphNodes.current.forEach((n) => (n.status = 'default'));
+    const visitedSet = new Set<string>();
+    const queue: string[] = ['1'];
+    visitedSet.add('1');
+    setReelQueue(['1']);
+    setTraversalOutput([]);
+    const result: string[] = [];
+
+    while (queue.length > 0 && !reelCancelled.current) {
+      setActiveCodeLine(3);
+      const currId = queue.shift()!;
+      const node = graphNodes.current.find((n) => n.id === currId);
+      if (node) node.status = 'active';
+      result.push(currId);
+      setTraversalOutput([...result]);
+      drawReelCanvas();
+      await sleep(700);
+
+      if (node) node.status = 'visited';
+
+      graphEdges.forEach(([u, v]) => {
+        let nbr = '';
+        if (u === currId && !visitedSet.has(v)) nbr = v;
+        if (v === currId && !visitedSet.has(u)) nbr = u;
+
+        if (nbr) {
+          visitedSet.add(nbr);
+          queue.push(nbr);
+          setActiveCodeLine(4);
+        }
+      });
+
+      setReelQueue([...queue]);
+      drawReelCanvas();
+      await sleep(400);
+    }
+    setReelPlaying(false);
+  };
+
+  // ================= BACKEND INTEGRATED LINKED LIST =================
+  const runLinkedListWithBackend = async () => {
+    reelCancelled.current = false;
+    setReelPlaying(true);
+    setTraversalOutput([]);
+
+    const listNodes = linkedList.map((n) => n.val);
+
+    try {
+      const res = await axios.post('http://127.0.0.1:5000/api/ds/traverse', {
+        topic: 'linked-list',
+        nodes: listNodes,
+      });
+
+      const nodesFromBackend = res.data.nodes;
+      const visited: string[] = [];
+
+      for (let i = 0; i < nodesFromBackend.length; i++) {
+        if (reelCancelled.current) break;
+        setActiveCodeLine(2);
+        setLinkedList((prev) =>
+          prev.map((item, idx) => ({
+            ...item,
+            status: idx === i ? 'active' : idx < i ? 'visited' : 'default',
+          }))
+        );
+        visited.push(nodesFromBackend[i].toString());
+        setTraversalOutput([...visited]);
+        setActiveCodeLine(3);
+        await sleep(700);
+      }
+      setLinkedList((prev) => prev.map((item) => ({ ...item, status: 'visited' })));
+      setActiveCodeLine(4);
+    } catch (err) {
+      console.warn('Backend connection failed, running locally:', err);
+      // Fallback
+      const visited: string[] = [];
+      for (let i = 0; i < linkedList.length; i++) {
+        if (reelCancelled.current) break;
+        setActiveCodeLine(2);
+        setLinkedList((prev) =>
+          prev.map((item, idx) => ({
+            ...item,
+            status: idx === i ? 'active' : idx < i ? 'visited' : 'default',
+          }))
+        );
+        visited.push(linkedList[i].val.toString());
+        setTraversalOutput([...visited]);
+        setActiveCodeLine(3);
+        await sleep(700);
+      }
+      setLinkedList((prev) => prev.map((item) => ({ ...item, status: 'visited' })));
+      setActiveCodeLine(4);
+    } finally {
+      setReelPlaying(false);
+    }
+  };
+
+  const handleAddLLNode = () => {
+    const val = parseInt(llInputVal, 10);
+    if (isNaN(val)) return;
+    if (linkedList.length >= 6) {
+      alert('Maximum 6 nodes allowed in demo canvas viewport!');
+      return;
+    }
+    setLinkedList((prev) => [...prev, { val, status: 'default' }]);
+    setLlInputVal('');
+  };
+
+  const handleDeleteLLNode = () => {
+    if (linkedList.length <= 1) {
+      alert('Linked list must contain at least 1 node.');
+      return;
+    }
+    setLinkedList((prev) => prev.slice(0, prev.length - 1));
+  };
+
+  const handleResetReel = () => {
+    reelCancelled.current = true;
+    setReelPlaying(false);
+    setReelStack([]);
+    setReelQueue([]);
+    setTraversalOutput([]);
+    setActiveCodeLine(0);
+    if (dsTopic === 'graph-bfs') {
+      graphNodes.current.forEach((n) => (n.status = 'default'));
+    } else if (dsTopic === 'linked-list') {
+      setLinkedList((prev) => prev.map((n) => ({ ...n, status: 'default' })));
+    } else {
+      if (treeRoot.current) {
+        const resetStatus = (node: TreeNode | null) => {
+          if (!node) return;
+          node.status = 'default';
+          resetStatus(node.left);
+          resetStatus(node.right);
+        };
+        resetStatus(treeRoot.current);
+      }
+    }
+    drawReelCanvas();
+  };
+
+  // Generate Frame Timeline for Sorting
   const generateFrames = (baseNums: number[], algo: Algorithm) => {
     const generatedFrames: Frame[] = [];
     const n = baseNums.length;
@@ -449,6 +1038,18 @@ export default function App() {
           >
             📚 Notations Guide
           </button>
+
+          {/* SIMPLIFIED & EXTENDED DATA STRUCTURES TAB */}
+          <button
+            className={`nav-tab-btn ${activeTab === 'trees_graphs_ll' ? 'active' : ''}`}
+            onClick={() => setActiveTab('trees_graphs_ll')}
+            style={{
+              background: activeTab === 'trees_graphs_ll' ? '#0284c7' : undefined,
+              color: '#fff',
+            }}
+          >
+            🌳 Trees, Graphs & Linked List
+          </button>
         </div>
 
         <div className="nav-right">
@@ -472,7 +1073,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* ================= PAGE 1: VISUALIZER ================= */}
+      {/* ================= PAGE 1: SORTING VISUALIZER ================= */}
       {activeTab === 'visualizer' && (
         <>
           <section className="glass-box toolbar">
@@ -797,6 +1398,250 @@ export default function App() {
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= PAGE 4: TREES, GRAPHS & LINKED LIST ================= */}
+      {activeTab === 'trees_graphs_ll' && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
+          {/* Concept Switcher */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              className="tab-btn"
+              style={{ background: dsTopic === 'invert' ? '#0284c7' : '#1e293b' }}
+              onClick={() => { setDsTopic('invert'); handleResetReel(); }}
+            >
+              🌳 Invert Binary Tree
+            </button>
+            <button
+              className="tab-btn"
+              style={{ background: dsTopic === 'inorder' ? '#0284c7' : '#1e293b' }}
+              onClick={() => { setDsTopic('inorder'); handleResetReel(); }}
+            >
+              🔁 Inorder Traversal (BST)
+            </button>
+            <button
+              className="tab-btn"
+              style={{ background: dsTopic === 'bfs-queue' ? '#0284c7' : '#1e293b' }}
+              onClick={() => { setDsTopic('bfs-queue'); handleResetReel(); }}
+            >
+              🚶 Level Order (Queue)
+            </button>
+            <button
+              className="tab-btn"
+              style={{ background: dsTopic === 'graph-bfs' ? '#0284c7' : '#1e293b' }}
+              onClick={() => { setDsTopic('graph-bfs'); handleResetReel(); }}
+            >
+              🕸️ Graph BFS Traversal
+            </button>
+            <button
+              className="tab-btn"
+              style={{ background: dsTopic === 'linked-list' ? '#0284c7' : '#1e293b' }}
+              onClick={() => { setDsTopic('linked-list'); handleResetReel(); }}
+            >
+              🔗 Singly Linked List
+            </button>
+          </div>
+
+          {/* ================= CUSTOM ARRAY / TREE INPUT TOOLBAR ================= */}
+          <form
+            onSubmit={handleBuildCustomArray}
+            style={{
+              display: 'flex',
+              gap: '8px',
+              marginBottom: '20px',
+              width: '440px',
+              maxWidth: '95vw',
+            }}
+          >
+            <input
+              type="text"
+              value={customTreeInput}
+              onChange={(e) => setCustomTreeInput(e.target.value)}
+              placeholder={
+                dsTopic === 'linked-list'
+                  ? 'Enter list e.g. 10, 20, 30, 40'
+                  : 'Enter tree array e.g. 45, 20, 75, 10, 30'
+              }
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                background: '#161b22',
+                border: '1px solid #30363d',
+                borderRadius: '8px',
+                color: '#f0f6fc',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+              }}
+            />
+            <button type="submit" className="btn-set" style={{ cursor: 'pointer', padding: '10px 16px' }}>
+              {dsTopic === 'linked-list' ? 'Set List' : 'Set Tree (BST)'}
+            </button>
+          </form>
+
+          {/* Main Frame Viewport */}
+          <div
+            className="glass-box"
+            style={{
+              width: '440px',
+              borderRadius: '24px',
+              border: '1px solid #334155',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9)',
+              position: 'relative',
+              background: '#090d16',
+            }}
+          >
+            {/* Header */}
+            <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b' }}>
+              <div>
+                <span style={{ fontSize: '10px', background: '#0284c7', padding: '2px 8px', borderRadius: '10px', color: '#fff', fontWeight: 'bold' }}>
+                  DATA STRUCTURE
+                </span>
+                <h3 style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#38bdf8', letterSpacing: '0.5px' }}>
+                  {dsTopic === 'invert' && 'INVERT BINARY TREE'}
+                  {dsTopic === 'inorder' && 'IN-ORDER TRAVERSAL (BST)'}
+                  {dsTopic === 'bfs-queue' && 'BREADTH FIRST SEARCH (TREE)'}
+                  {dsTopic === 'graph-bfs' && 'GRAPH BFS TRAVERSAL'}
+                  {dsTopic === 'linked-list' && 'SINGLY LINKED LIST'}
+                </h3>
+              </div>
+              <span style={{ fontSize: '11px', color: '#94a3b8', background: '#1e293b', padding: '4px 8px', borderRadius: '8px', fontFamily: 'monospace' }}>
+                {dsTopic === 'graph-bfs' ? 'TIME O(V+E)' : dsTopic === 'linked-list' ? 'INSERT: O(1) | SEARCH: O(N)' : 'TIME O(N)'}
+              </span>
+            </div>
+
+            {/* Canvas Viewport */}
+            <div style={{ background: '#030712', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              <canvas ref={reelCanvasRef} width={440} height={210} />
+              <div style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: '12px', minHeight: '20px', marginBottom: '8px' }}>
+                {traversalOutput.length > 0 ? `output: [ ${traversalOutput.join(', ')} ]` : ''}
+              </div>
+            </div>
+
+            {/* Linked List Interactive Input Row */}
+            {dsTopic === 'linked-list' && (
+              <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', background: '#0d131f', borderTop: '1px solid #1e293b', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  placeholder="Val"
+                  value={llInputVal}
+                  onChange={(e) => setLlInputVal(e.target.value)}
+                  style={{ width: '80px', padding: '6px 8px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
+                />
+                <button className="v-btn" onClick={handleAddLLNode} style={{ padding: '6px 10px', fontSize: '11px' }}>
+                  + Add Node
+                </button>
+                <button className="v-btn" onClick={handleDeleteLLNode} style={{ padding: '6px 10px', fontSize: '11px', color: '#f87171' }}>
+                  - Delete End
+                </button>
+              </div>
+            )}
+
+            {/* Live Stack & Queue Trackers (for Tree & Graph) */}
+            {dsTopic !== 'linked-list' && (
+              <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', background: '#0d131f', borderTop: '1px solid #1e293b' }}>
+                <div style={{ flex: 1, border: '1px solid #1e293b', borderRadius: '8px', padding: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>CALL STACK (LIFO)</div>
+                  <div style={{ display: 'flex', gap: '4px', minHeight: '24px', marginTop: '4px', overflowX: 'auto' }}>
+                    {reelStack.map((item, idx) => (
+                      <span key={idx} style={{ background: '#0284c7', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', whiteSpace: 'nowrap' }}>
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ flex: 1, border: '1px solid #1e293b', borderRadius: '8px', padding: '6px' }}>
+                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>QUEUE (FIFO)</div>
+                  <div style={{ display: 'flex', gap: '4px', minHeight: '24px', marginTop: '4px', overflowX: 'auto' }}>
+                    {reelQueue.map((item, idx) => (
+                      <span key={idx} style={{ background: '#10b981', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', whiteSpace: 'nowrap' }}>
+                        Node({item})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Code Highlighting Window */}
+            <div style={{ background: '#020617', padding: '12px 16px', borderTop: '1px solid #1e293b' }}>
+              <div style={{ fontSize: '10px', color: '#475569', marginBottom: '6px' }}>● ● ● algorithm.py</div>
+              <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.5' }}>
+                {dsTopic === 'invert' && (
+                  <>
+                    <div style={{ color: activeCodeLine === 1 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 1 ? 'bold' : 'normal' }}>1: def invert(node):</div>
+                    <div style={{ color: activeCodeLine === 2 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 2 ? 'bold' : 'normal' }}>2:     if node is None: return None</div>
+                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     node.left, node.right = node.right, node.left</div>
+                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     invert(node.left)</div>
+                    <div style={{ color: activeCodeLine === 5 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 5 ? 'bold' : 'normal' }}>5:     invert(node.right)</div>
+                  </>
+                )}
+                {dsTopic === 'inorder' && (
+                  <>
+                    <div style={{ color: activeCodeLine === 1 ? '#38bdf8' : '#64748b' }}>1: def inorder(node):</div>
+                    <div style={{ color: activeCodeLine === 2 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 2 ? 'bold' : 'normal' }}>2:     inorder(node.left) # Recurse Left</div>
+                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     visit(node.val)    # Print In Sorted Order</div>
+                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     inorder(node.right)# Recurse Right</div>
+                  </>
+                )}
+                {dsTopic === 'bfs-queue' && (
+                  <>
+                    <div style={{ color: '#64748b' }}>1: queue = [root]</div>
+                    <div style={{ color: '#64748b' }}>2: while queue:</div>
+                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     curr = queue.pop(0) # FIFO Dequeue</div>
+                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     if curr.left: queue.append(curr.left)</div>
+                    <div style={{ color: activeCodeLine === 5 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 5 ? 'bold' : 'normal' }}>5:     if curr.right: queue.append(curr.right)</div>
+                  </>
+                )}
+                {dsTopic === 'graph-bfs' && (
+                  <>
+                    <div style={{ color: '#64748b' }}>1: visited = Set([start])</div>
+                    <div style={{ color: '#64748b' }}>2: queue = [start]</div>
+                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3: curr = queue.pop(0) # Explore Node</div>
+                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4: for neighbor in graph[curr]: queue.push(neighbor)</div>
+                  </>
+                )}
+                {dsTopic === 'linked-list' && (
+                  <>
+                    <div style={{ color: '#64748b' }}>1: curr = head</div>
+                    <div style={{ color: activeCodeLine === 2 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 2 ? 'bold' : 'normal' }}>2: while curr is not None:</div>
+                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     visit(curr.data)</div>
+                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     curr = curr.next # Move to next node</div>
+                  </>
+                )}
+              </pre>
+            </div>
+
+            {/* Floating Action Controls */}
+            <div style={{ position: 'absolute', right: '14px', bottom: dsTopic === 'linked-list' ? '180px' : '130px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                className="v-btn v-btn-play"
+                style={{ width: '42px', height: '42px', borderRadius: '50%', padding: 0 }}
+                onClick={() => {
+                  if (reelPlaying) {
+                    handleResetReel();
+                  } else {
+                    if (dsTopic === 'invert') runInvertReel();
+                    else if (dsTopic === 'inorder') runInorderReelWithBackend(); // Connected to Flask
+                    else if (dsTopic === 'bfs-queue') runBFSQueueReel();
+                    else if (dsTopic === 'graph-bfs') runGraphBFSReel();
+                    else if (dsTopic === 'linked-list') runLinkedListWithBackend(); // Connected to Flask
+                  }
+                }}
+              >
+                {reelPlaying ? '⏸' : '▶'}
+              </button>
+              <button
+                className="v-btn"
+                style={{ width: '42px', height: '42px', borderRadius: '50%', padding: 0 }}
+                onClick={handleResetReel}
+                title="Reset animation"
+              >
+                ↺
+              </button>
             </div>
           </div>
         </div>
