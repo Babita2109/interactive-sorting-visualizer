@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './style.css';
 
-type Algorithm = 'bubble' | 'selection' | 'insertion' | 'merge';
-type ActiveTab = 'visualizer' | 'operations' | 'notations' | 'trees_graphs_ll';
+type Algorithm = 'bubble' | 'selection' | 'insertion' | 'merge' | 'quick';
+type ActiveTab = 'visualizer' | 'searching' | 'operations' | 'notations' | 'trees_graphs_ll';
+type SearchAlgorithm = 'linear' | 'binary';
 
 interface Frame {
   array: { val: number; status: 'default' | 'compare' | 'swap' | 'sorted' }[];
@@ -34,6 +35,17 @@ interface ListNode {
   status: 'default' | 'active' | 'visited' | 'delete';
 }
 
+// ================= C CODE SNIPPETS =================
+const cCodeSnippets: Record<string, string> = {
+  bubble: `void bubbleSort(int arr[], int n) {\n  for (int i = 0; i < n - 1; i++) {\n    for (int j = 0; j < n - i - 1; j++) {\n      if (arr[j] > arr[j + 1]) {\n        // Swap elements\n        int temp = arr[j];\n        arr[j] = arr[j + 1];\n        arr[j + 1] = temp;\n      }\n    }\n  }\n}`,
+  selection: `void selectionSort(int arr[], int n) {\n  for (int i = 0; i < n - 1; i++) {\n    int min_idx = i;\n    for (int j = i + 1; j < n; j++) {\n      if (arr[j] < arr[min_idx])\n        min_idx = j;\n    }\n    // Swap minimum element with first element\n    int temp = arr[min_idx];\n    arr[min_idx] = arr[i];\n    arr[i] = temp;\n  }\n}`,
+  insertion: `void insertionSort(int arr[], int n) {\n  for (int i = 1; i < n; i++) {\n    int key = arr[i];\n    int j = i - 1;\n    // Move elements greater than key to one position ahead\n    while (j >= 0 && arr[j] > key) {\n      arr[j + 1] = arr[j];\n      j = j - 1;\n    }\n    arr[j + 1] = key;\n  }\n}`,
+  merge: `void merge(int arr[], int l, int m, int r) {\n  // Merge logic...\n}\n\nvoid mergeSort(int arr[], int l, int r) {\n  if (l < r) {\n    int m = l + (r - l) / 2;\n    mergeSort(arr, l, m);\n    mergeSort(arr, m + 1, r);\n    merge(arr, l, m, r);\n  }\n}`,
+  quick: `int partition(int arr[], int low, int high) {\n  int pivot = arr[high];\n  int i = (low - 1);\n  for (int j = low; j < high; j++) {\n    if (arr[j] < pivot) {\n      i++;\n      int temp = arr[i]; arr[i] = arr[j]; arr[j] = temp;\n    }\n  }\n  int temp = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = temp;\n  return (i + 1);\n}\n\nvoid quickSort(int arr[], int low, int high) {\n  if (low < high) {\n    int pi = partition(arr, low, high);\n    quickSort(arr, low, pi - 1);\n    quickSort(arr, pi + 1, high);\n  }\n}`,
+  linear: `int linearSearch(int arr[], int n, int x) {\n  for (int i = 0; i < n; i++) {\n    if (arr[i] == x)\n      return i; // Target found\n  }\n  return -1; // Target not found\n}`,
+  binary: `int binarySearch(int arr[], int l, int r, int x) {\n  while (l <= r) {\n    int m = l + (r - l) / 2;\n    if (arr[m] == x) \n      return m;\n    if (arr[m] < x) \n      l = m + 1;\n    else \n      r = m - 1;\n  }\n  return -1;\n}`
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('visualizer');
 
@@ -49,6 +61,10 @@ export default function App() {
   const [customInput, setCustomInput] = useState<string>('45, 12, 89, 34, 70, 23, 95, 15, 60, 38');
   const [algorithm, setAlgorithm] = useState<Algorithm>('bubble');
   const [speed, setSpeed] = useState<number>(400);
+
+  // Searching states
+  const [searchAlgo, setSearchAlgo] = useState<SearchAlgorithm>('linear');
+  const [searchTarget, setSearchTarget] = useState<string>('');
 
   // Operations states
   const [insertVal, setInsertVal] = useState<string>('');
@@ -92,14 +108,7 @@ export default function App() {
   // BST Insertion helper
   const insertIntoBST = (rootNode: TreeNode | null, val: number): TreeNode => {
     if (!rootNode) {
-      return {
-        val,
-        status: 'default',
-        x: 220,
-        y: 40,
-        left: null,
-        right: null,
-      };
+      return { val, status: 'default', x: 220, y: 40, left: null, right: null };
     }
     if (val < rootNode.val) {
       rootNode.left = insertIntoBST(rootNode.left, val);
@@ -154,18 +163,12 @@ export default function App() {
       x: 220,
       y: 40,
       left: {
-        val: 2,
-        status: 'default',
-        x: 130,
-        y: 100,
+        val: 2, status: 'default', x: 130, y: 100,
         left: { val: 1, status: 'default', x: 85, y: 160, left: null, right: null },
         right: { val: 3, status: 'default', x: 175, y: 160, left: null, right: null },
       },
       right: {
-        val: 7,
-        status: 'default',
-        x: 310,
-        y: 100,
+        val: 7, status: 'default', x: 310, y: 100,
         left: { val: 6, status: 'default', x: 265, y: 160, left: null, right: null },
         right: { val: 9, status: 'default', x: 355, y: 160, left: null, right: null },
       },
@@ -393,7 +396,6 @@ export default function App() {
     const nodesToSend = parsedNodes.length > 0 ? parsedNodes : [4, 2, 7, 1, 3, 6, 9];
 
     try {
-      // Flask Backend Call
       const res = await axios.post('http://127.0.0.1:5000/api/tree/inorder', {
         nodes: nodesToSend,
       });
@@ -409,7 +411,6 @@ export default function App() {
         visited.push(step.val.toString());
         setTraversalOutput([...visited]);
 
-        // Highlight active node on canvas
         const highlightNode = (node: TreeNode | null, val: number) => {
           if (!node) return;
           node.status = node.val === val ? 'active' : 'visited';
@@ -423,7 +424,6 @@ export default function App() {
       }
     } catch (err) {
       console.warn('Backend connection failed, running locally:', err);
-      // Fallback local logic
       const visitedFallback: string[] = [];
       async function inorder(node: TreeNode | null) {
         if (!node || reelCancelled.current) return;
@@ -664,7 +664,7 @@ export default function App() {
 
           generatedFrames.push({
             array: makeBars(arr, currentStatuses),
-            explanation: `Comparing arr[${j}] (${arr[j]}) and arr[${j + 1}] (${arr[j + 1]}) | Pseudocode: if (arr[${j}] > arr[${j + 1}])`,
+            explanation: `Comparing arr[${j}] (${arr[j]}) and arr[${j + 1}] (${arr[j + 1]})`,
             comparisons: comp,
             swaps: swp,
           });
@@ -681,7 +681,7 @@ export default function App() {
 
             generatedFrames.push({
               array: makeBars(arr, swapStatuses),
-              explanation: `Swapping values ${temp} and ${arr[j]} | Pseudocode: swap(arr[${j}], arr[${j + 1}])`,
+              explanation: `Swapping values ${temp} and ${arr[j]}`,
               comparisons: comp,
               swaps: swp,
             });
@@ -690,7 +690,7 @@ export default function App() {
         statusArr[n - i - 1] = 'sorted';
         generatedFrames.push({
           array: makeBars(arr, [...statusArr]),
-          explanation: `Element ${arr[n - i - 1]} placed at correct index [${n - i - 1}] | Pseudocode: mark_sorted(arr[${n - i - 1}])`,
+          explanation: `Element ${arr[n - i - 1]} placed at correct index [${n - i - 1}]`,
           comparisons: comp,
           swaps: swp,
         });
@@ -702,7 +702,7 @@ export default function App() {
         let minIdx = i;
         generatedFrames.push({
           array: makeBars(arr, [...statusArr]),
-          explanation: `Setting initial minimum index to [${i}] with value ${arr[i]} | Pseudocode: min_index = ${i}`,
+          explanation: `Setting initial minimum index to [${i}] with value ${arr[i]}`,
           comparisons: comp,
           swaps: swp,
         });
@@ -715,7 +715,7 @@ export default function App() {
 
           generatedFrames.push({
             array: makeBars(arr, currentStatuses),
-            explanation: `Comparing candidate (${arr[minIdx]}) with arr[${j}] (${arr[j]}) | Pseudocode: if (arr[${j}] < arr[min_index])`,
+            explanation: `Comparing candidate (${arr[minIdx]}) with arr[${j}] (${arr[j]})`,
             comparisons: comp,
             swaps: swp,
           });
@@ -724,7 +724,7 @@ export default function App() {
             minIdx = j;
             generatedFrames.push({
               array: makeBars(arr, currentStatuses),
-              explanation: `Found smaller element ${arr[minIdx]} at index [${minIdx}] | Pseudocode: min_index = ${minIdx}`,
+              explanation: `Found smaller element ${arr[minIdx]} at index [${minIdx}]`,
               comparisons: comp,
               swaps: swp,
             });
@@ -738,7 +738,7 @@ export default function App() {
           arr[minIdx] = temp;
           generatedFrames.push({
             array: makeBars(arr, [...statusArr]),
-            explanation: `Swapped minimum element ${arr[i]} into index [${i}] | Pseudocode: swap(arr[${i}], arr[min_index])`,
+            explanation: `Swapped minimum element ${arr[i]} into index [${i}]`,
             comparisons: comp,
             swaps: swp,
           });
@@ -755,7 +755,7 @@ export default function App() {
 
         generatedFrames.push({
           array: makeBars(arr, [...statusArr]),
-          explanation: `Selected key element ${key} at index [${i}] | Pseudocode: key = arr[${i}], j = ${i} - 1`,
+          explanation: `Selected key element ${key} at index [${i}]`,
           comparisons: comp,
           swaps: swp,
         });
@@ -773,7 +773,7 @@ export default function App() {
 
           generatedFrames.push({
             array: makeBars(arr, compStatuses),
-            explanation: `Shifting element: ${temp} < ${arr[j]}, moved to index [${j - 1}] | Pseudocode: arr[j + 1] = arr[j]; j--`,
+            explanation: `Shifting element: ${temp} < ${arr[j]}, moved to index [${j - 1}]`,
             comparisons: comp,
             swaps: swp,
           });
@@ -784,7 +784,7 @@ export default function App() {
       statusArr.fill('sorted');
       generatedFrames.push({
         array: makeBars(arr, statusArr),
-        explanation: `Array is fully sorted | Pseudocode: TERMINATE_SORT()`,
+        explanation: `Array is fully sorted`,
         comparisons: comp,
         swaps: swp,
       });
@@ -797,7 +797,7 @@ export default function App() {
 
         generatedFrames.push({
           array: makeBars(arr, [...statusArr]),
-          explanation: `Divide: Subarrays [${start}..${mid}] and [${mid + 1}..${end}] | Pseudocode: MERGE(arr, ${start}, ${mid}, ${end})`,
+          explanation: `Divide: Subarrays [${start}..${mid}] and [${mid + 1}..${end}]`,
           comparisons: comp,
           swaps: swp,
         });
@@ -819,7 +819,7 @@ export default function App() {
           activeStatuses[k] = 'swap';
           generatedFrames.push({
             array: makeBars(arr, activeStatuses),
-            explanation: `Merged element ${arr[k]} into position [${k}] | Pseudocode: arr[k] = min(left[i], right[j]); k++`,
+            explanation: `Merged element ${arr[k]} into position [${k}]`,
             comparisons: comp,
             swaps: swp,
           });
@@ -832,7 +832,7 @@ export default function App() {
           k++;
           generatedFrames.push({
             array: makeBars(arr, [...statusArr]),
-            explanation: `Copying remaining left elements | Pseudocode: arr[k] = left[i]; i++; k++`,
+            explanation: `Copying remaining left elements`,
             comparisons: comp,
             swaps: swp,
           });
@@ -844,7 +844,7 @@ export default function App() {
           k++;
           generatedFrames.push({
             array: makeBars(arr, [...statusArr]),
-            explanation: `Copying remaining right elements | Pseudocode: arr[k] = right[j]; j++; k++`,
+            explanation: `Copying remaining right elements`,
             comparisons: comp,
             swaps: swp,
           });
@@ -867,7 +867,92 @@ export default function App() {
       statusArr.fill('sorted');
       generatedFrames.push({
         array: makeBars(arr, statusArr),
-        explanation: `Array merged and sorted successfully | Pseudocode: MERGE_SORT_COMPLETE()`,
+        explanation: `Array merged and sorted successfully`,
+        comparisons: comp,
+        swaps: swp,
+      });
+    } else if (algo === 'quick') {
+      const statusArr: ('default' | 'compare' | 'swap' | 'sorted')[] = new Array(n).fill('default');
+
+      const partition = (low: number, high: number) => {
+        const pivot = arr[high];
+        let i = low - 1;
+
+        generatedFrames.push({
+          array: makeBars(arr, [...statusArr]),
+          explanation: `Selected pivot ${pivot} at index [${high}]`,
+          comparisons: comp,
+          swaps: swp,
+        });
+
+        for (let j = low; j < high; j++) {
+          comp++;
+          const compStatuses = [...statusArr];
+          compStatuses[high] = 'compare'; // Pivot ko yellow dikhane ke liye
+          compStatuses[j] = 'compare';
+
+          generatedFrames.push({
+            array: makeBars(arr, compStatuses),
+            explanation: `Comparing arr[${j}] (${arr[j]}) with pivot (${pivot})`,
+            comparisons: comp,
+            swaps: swp,
+          });
+
+          if (arr[j] < pivot) {
+            i++;
+            swp++;
+            const temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+
+            const swapStatuses = [...statusArr];
+            swapStatuses[i] = 'swap';
+            swapStatuses[j] = 'swap';
+            swapStatuses[high] = 'compare';
+
+            generatedFrames.push({
+              array: makeBars(arr, swapStatuses),
+              explanation: `Swapped arr[${i}] and arr[${j}] (Element < Pivot)`,
+              comparisons: comp,
+              swaps: swp,
+            });
+          }
+        }
+        swp++;
+        const temp = arr[i + 1];
+        arr[i + 1] = arr[high];
+        arr[high] = temp;
+
+        const swapPivotStatuses = [...statusArr];
+        swapPivotStatuses[i + 1] = 'swap';
+        swapPivotStatuses[high] = 'swap';
+
+        generatedFrames.push({
+          array: makeBars(arr, swapPivotStatuses),
+          explanation: `Placed pivot ${pivot} at its correct sorted position [${i + 1}]`,
+          comparisons: comp,
+          swaps: swp,
+        });
+
+        statusArr[i + 1] = 'sorted';
+        return i + 1;
+      };
+
+      const quickSortHelper = (low: number, high: number) => {
+        if (low < high) {
+          const pi = partition(low, high);
+          quickSortHelper(low, pi - 1);
+          quickSortHelper(pi + 1, high);
+        } else if (low === high && low >= 0 && low < n) {
+          statusArr[low] = 'sorted';
+        }
+      };
+
+      quickSortHelper(0, n - 1);
+      statusArr.fill('sorted');
+      generatedFrames.push({
+        array: makeBars(arr, statusArr),
+        explanation: `Array is fully sorted`,
         comparisons: comp,
         swaps: swp,
       });
@@ -879,8 +964,110 @@ export default function App() {
   };
 
   useEffect(() => {
-    generateFrames(rawNumbers, algorithm);
-  }, [rawNumbers, algorithm]);
+    if (activeTab === 'visualizer') {
+      generateFrames(rawNumbers, algorithm);
+    }
+  }, [rawNumbers, algorithm, activeTab]);
+
+  const handleStartSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = parseInt(searchTarget, 10);
+    if (isNaN(target)) {
+      alert('Please enter a target number to search.');
+      return;
+    }
+
+    const generatedFrames: Frame[] = [];
+    let comp = 0;
+    let arr = [...rawNumbers];
+
+    const makeBars = (currentArr: number[], statuses?: ('default' | 'compare' | 'swap' | 'sorted')[]) => {
+      return currentArr.map((num, i) => ({ val: num, status: statuses ? statuses[i] : 'default' }));
+    };
+
+    if (searchAlgo === 'linear') {
+      const statusArr: ('default' | 'compare' | 'swap' | 'sorted')[] = new Array(arr.length).fill('default');
+      let found = false;
+
+      for (let i = 0; i < arr.length; i++) {
+        comp++;
+        const currentStatuses = [...statusArr];
+        currentStatuses[i] = 'compare';
+
+        generatedFrames.push({
+          array: makeBars(arr, currentStatuses),
+          explanation: `Checking if arr[${i}] (${arr[i]}) == ${target}`,
+          comparisons: comp,
+          swaps: 0,
+        });
+
+        if (arr[i] === target) {
+          currentStatuses[i] = 'sorted'; // Found (Green)
+          generatedFrames.push({
+            array: makeBars(arr, currentStatuses),
+            explanation: `Target ${target} found at index [${i}]! 🎉`,
+            comparisons: comp,
+            swaps: 0,
+          });
+          found = true;
+          break;
+        }
+      }
+      if (!found) generatedFrames.push({ array: makeBars(arr, statusArr), explanation: `Target ${target} not found in array.`, comparisons: comp, swaps: 0 });
+
+    } else if (searchAlgo === 'binary') {
+      arr = [...rawNumbers].sort((a, b) => a - b);
+      const statusArr: ('default' | 'compare' | 'swap' | 'sorted')[] = new Array(arr.length).fill('default');
+
+      generatedFrames.push({
+        array: makeBars(arr),
+        explanation: `Binary Search requires a sorted array. Target: ${target}`,
+        comparisons: comp, swaps: 0,
+      });
+
+      let low = 0;
+      let high = arr.length - 1;
+      let found = false;
+
+      while (low <= high) {
+        comp++;
+        let mid = Math.floor((low + high) / 2);
+        const currentStatuses = [...statusArr];
+        
+        for (let k = low; k <= high; k++) currentStatuses[k] = 'swap'; // Active Search Space (Red)
+        currentStatuses[mid] = 'compare'; // Mid Element (Yellow)
+
+        generatedFrames.push({
+          array: makeBars(arr, currentStatuses),
+          explanation: `Search space [${low}..${high}]. Mid index = ${mid}, arr[mid] = ${arr[mid]}`,
+          comparisons: comp, swaps: 0,
+        });
+
+        if (arr[mid] === target) {
+          currentStatuses.fill('default');
+          currentStatuses[mid] = 'sorted';
+          generatedFrames.push({
+            array: makeBars(arr, currentStatuses),
+            explanation: `Target ${target} found at mid index [${mid}]! 🎉`,
+            comparisons: comp, swaps: 0,
+          });
+          found = true;
+          break;
+        } else if (arr[mid] < target) {
+          generatedFrames.push({ array: makeBars(arr, currentStatuses), explanation: `${arr[mid]} < ${target}. Go Right. low = ${mid + 1}`, comparisons: comp, swaps: 0 });
+          low = mid + 1;
+        } else {
+          generatedFrames.push({ array: makeBars(arr, currentStatuses), explanation: `${arr[mid]} > ${target}. Go Left. high = ${mid - 1}`, comparisons: comp, swaps: 0 });
+          high = mid - 1;
+        }
+      }
+      if (!found) generatedFrames.push({ array: makeBars(arr, statusArr), explanation: `Target ${target} not found.`, comparisons: comp, swaps: 0 });
+    }
+
+    setFrames(generatedFrames);
+    setCurrentFrameIdx(0);
+    setIsPlaying(true); // Automatically play animation
+  };
 
   // Playback timer
   useEffect(() => {
@@ -1024,7 +1211,13 @@ export default function App() {
             className={`nav-tab-btn ${activeTab === 'visualizer' ? 'active' : ''}`}
             onClick={() => setActiveTab('visualizer')}
           >
-            🎬 Visualizer
+            🎬 Sorting Visualizer
+          </button>
+          <button
+            className={`nav-tab-btn ${activeTab === 'searching' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('searching'); setFrames([]); }}
+          >
+            🔍 Searching Visualizer
           </button>
           <button
             className={`nav-tab-btn ${activeTab === 'operations' ? 'active' : ''}`}
@@ -1039,7 +1232,6 @@ export default function App() {
             📚 Notations Guide
           </button>
 
-          {/* SIMPLIFIED & EXTENDED DATA STRUCTURES TAB */}
           <button
             className={`nav-tab-btn ${activeTab === 'trees_graphs_ll' ? 'active' : ''}`}
             onClick={() => setActiveTab('trees_graphs_ll')}
@@ -1053,7 +1245,7 @@ export default function App() {
         </div>
 
         <div className="nav-right">
-          <span className="pill-algo">{algorithm.toUpperCase()}</span>
+          <span className="pill-algo">{activeTab === 'visualizer' ? algorithm.toUpperCase() : activeTab === 'searching' ? searchAlgo.toUpperCase() : ''}</span>
           {user ? (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <span style={{ fontSize: '13px' }}>👤 {user}</span>
@@ -1088,7 +1280,7 @@ export default function App() {
             </form>
 
             <div className="algo-tabs">
-              {(['bubble', 'selection', 'insertion', 'merge'] as Algorithm[]).map((alg) => (
+              {(['bubble', 'selection', 'insertion', 'merge', 'quick'] as Algorithm[]).map((alg) => (
                 <button
                   key={alg}
                   className={`tab-btn ${algorithm === alg ? 'active' : ''}`}
@@ -1121,16 +1313,7 @@ export default function App() {
             <div className="video-explanation-banner">
               <span className="step-pill-video">Step #{currentFrameIdx + 1}</span>
               <div className="step-caption">
-                {currentFrame.explanation.includes('| Pseudocode:') ? (
-                  <>
-                    <span>{currentFrame.explanation.split('| Pseudocode:')[0]}</span>
-                    <code className="pseudocode-tag">
-                      {currentFrame.explanation.split('| Pseudocode:')[1]}
-                    </code>
-                  </>
-                ) : (
-                  currentFrame.explanation
-                )}
+                {currentFrame.explanation}
               </div>
             </div>
 
@@ -1195,6 +1378,17 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {/* C CODE DISPLAY FOR SORTING */}
+            <div className="glass-box code-display" style={{ marginTop: '16px', background: '#090d16', border: '1px solid #1e293b', padding: '16px', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
+                <h4 style={{ margin: 0, color: '#38bdf8', fontSize: '14px' }}>💻 C Language Code: {algorithm.toUpperCase()} SORT</h4>
+                <span style={{ fontSize: '10px', background: '#161b22', padding: '4px 8px', borderRadius: '4px', color: '#94a3b8' }}>algorithm.c</span>
+              </div>
+              <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto' }}>
+                {cCodeSnippets[algorithm]}
+              </pre>
+            </div>
           </section>
 
           <section className="glass-box arranged-section">
@@ -1224,7 +1418,62 @@ export default function App() {
         </>
       )}
 
-      {/* ================= PAGE 2: OPERATIONS ================= */}
+      {/* ================= PAGE 2: SEARCHING VISUALIZER ================= */}
+      {activeTab === 'searching' && (
+        <>
+          <section className="glass-box toolbar" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center' }}>
+            <form onSubmit={handleStartSearch} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input type="number" placeholder="Enter Target Value" value={searchTarget} onChange={(e) => setSearchTarget(e.target.value)} required style={{ padding: '8px 12px', borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff' }} />
+              <button type="submit" className="btn-set" style={{ background: '#10b981' }}>Start Search</button>
+            </form>
+            <div className="algo-tabs">
+              <button className={`tab-btn ${searchAlgo === 'linear' ? 'active' : ''}`} onClick={() => setSearchAlgo('linear')}>LINEAR SEARCH</button>
+              <button className={`tab-btn ${searchAlgo === 'binary' ? 'active' : ''}`} onClick={() => setSearchAlgo('binary')}>BINARY SEARCH</button>
+            </div>
+          </section>
+
+          {frames.length > 0 ? (
+            <section className="glass-box video-player-stage">
+              <div className="video-explanation-banner">
+                <span className="step-pill-video">Step #{currentFrameIdx + 1}</span>
+                <div className="step-caption">{currentFrame.explanation}</div>
+              </div>
+              <div className="canvas-area">
+                {currentFrame.array.map((bar, i) => (
+                  <div key={i} className="bar-col">
+                    <div className={`bar-block ${bar.status}`} style={{ height: `${Math.round((bar.val / maxBarValue) * 220) + 30}px`, width: `${Math.max(12, Math.min(36, 650 / currentFrame.array.length))}px` }} />
+                    <span className="bar-val-lbl">{bar.val}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="video-control-bar">
+                <div className="controls-row" style={{ justifyContent: 'center' }}>
+                  <button className="v-btn" onClick={handleStepPrev}>⏪ Prev</button>
+                  <button className="v-btn v-btn-play" onClick={togglePlay}>{isPlaying ? '⏸ Pause' : '▶ Play Search'}</button>
+                  <button className="v-btn" onClick={handleStepNext}>Next ⏩</button>
+                </div>
+              </div>
+
+              {/* C CODE DISPLAY FOR SEARCHING */}
+              <div className="glass-box code-display" style={{ marginTop: '16px', background: '#090d16', border: '1px solid #1e293b', padding: '16px', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
+                  <h4 style={{ margin: 0, color: '#10b981', fontSize: '14px' }}>💻 C Language Code: {searchAlgo.toUpperCase()} SEARCH</h4>
+                  <span style={{ fontSize: '10px', background: '#161b22', padding: '4px 8px', borderRadius: '4px', color: '#94a3b8' }}>search.c</span>
+                </div>
+                <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto' }}>
+                  {cCodeSnippets[searchAlgo]}
+                </pre>
+              </div>
+            </section>
+          ) : (
+            <div className="glass-box" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>
+              <h3>Enter a Target Value and click "Start Search"</h3>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ================= PAGE 3: OPERATIONS ================= */}
       {activeTab === 'operations' && (
         <div className="operations-page">
           <div className="ops-grid">
@@ -1322,7 +1571,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ================= PAGE 3: NOTATIONS ================= */}
+      {/* ================= PAGE 4: NOTATIONS ================= */}
       {activeTab === 'notations' && (
         <div className="notations-page">
           <div className="glass-box not-intro-card">
@@ -1396,6 +1645,30 @@ export default function App() {
                     <td>O(N)</td>
                     <td><strong>Guaranteed O(N log N):</strong> Consistently divides array into equal halves using Divide & Conquer.</td>
                   </tr>
+                  <tr>
+                    <td><strong>Quick Sort</strong></td>
+                    <td><span className="badge-blue">O(N log N)</span></td>
+                    <td><span className="badge-blue">O(N log N)</span></td>
+                    <td><span className="badge-red">O(N²)</span></td>
+                    <td>O(log N)</td>
+                    <td><strong>Worst:</strong> Pivot is always smallest/largest element (e.g. Sorted Array).</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Linear Search</strong></td>
+                    <td><span className="badge-green">O(1)</span></td>
+                    <td><span className="badge-orange">O(N)</span></td>
+                    <td><span className="badge-red">O(N)</span></td>
+                    <td>O(1)</td>
+                    <td><strong>Best:</strong> Target is at the first index.</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Binary Search</strong></td>
+                    <td><span className="badge-green">O(1)</span></td>
+                    <td><span className="badge-blue">O(log N)</span></td>
+                    <td><span className="badge-blue">O(log N)</span></td>
+                    <td>O(1)</td>
+                    <td><strong>Requirement:</strong> Array must be sorted before performing Binary Search.</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -1403,7 +1676,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ================= PAGE 4: TREES, GRAPHS & LINKED LIST ================= */}
+      {/* ================= PAGE 5: TREES, GRAPHS & LINKED LIST ================= */}
       {activeTab === 'trees_graphs_ll' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
           {/* Concept Switcher */}
@@ -1625,10 +1898,10 @@ export default function App() {
                     handleResetReel();
                   } else {
                     if (dsTopic === 'invert') runInvertReel();
-                    else if (dsTopic === 'inorder') runInorderReelWithBackend(); // Connected to Flask
+                    else if (dsTopic === 'inorder') runInorderReelWithBackend();
                     else if (dsTopic === 'bfs-queue') runBFSQueueReel();
                     else if (dsTopic === 'graph-bfs') runGraphBFSReel();
-                    else if (dsTopic === 'linked-list') runLinkedListWithBackend(); // Connected to Flask
+                    else if (dsTopic === 'linked-list') runLinkedListWithBackend();
                   }
                 }}
               >
