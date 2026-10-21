@@ -1,8 +1,8 @@
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from datetime import datetime, timezone
+from collections import deque
 import time
 import math
 
@@ -323,7 +323,6 @@ def merge_sort():
 
 
 # Quick Sort (iterative version)
-# Avoids recursive call stack overflow on large arrays.
 @app.route("/api/sort/quick", methods=["POST"])
 def quick_sort():
     data, array = get_array()
@@ -363,7 +362,6 @@ def quick_sort():
 
     start_time = time.perf_counter()
 
-    # Explicit stack instead of recursive calls
     stack = [(0, len(arr) - 1)]
 
     while stack:
@@ -375,8 +373,6 @@ def quick_sort():
             left_size = pivot_index - low
             right_size = high - pivot_index
 
-            # Process the smaller partition immediately
-            # and save the larger partition on the stack.
             if left_size < right_size:
                 if pivot_index + 1 < high:
                     stack.append((pivot_index + 1, high))
@@ -542,11 +538,11 @@ def get_history():
         }), 500
 
 
-# --- Naya Route sirf Linked List & Tree ke liye (Purane routes waise hi rahenge) ---
+# Data structure generic route
 @app.route('/api/ds/traverse', methods=['POST'])
 def ds_traverse():
     data = request.json or {}
-    topic = data.get('topic')  # 'tree', 'graph', 'linked-list'
+    topic = data.get('topic')
     nodes = data.get('nodes', [])
     
     return jsonify({
@@ -554,6 +550,7 @@ def ds_traverse():
         "topic": topic,
         "nodes": nodes
     }), 200
+
 
 @app.route('/api/tree/inorder', methods=['POST'])
 def tree_inorder():
@@ -579,6 +576,112 @@ def tree_inorder():
         "result": sorted_nodes,
         "steps": steps
     }), 200
+
+
+# ================= UPDATED GRAPH TRAVERSAL =================
+@app.route('/api/graph/traverse', methods=['POST'])
+def graph_traverse():
+    data = request.get_json(silent=True) or {}
+    technique = data.get('algo') or data.get('technique', 'bfs')
+    technique = technique.lower()
+    graph_type = data.get('graph_type', 'undirected')
+    
+    # 1. Check karein agar body mein custom graph pass kiya gaya hai (Thunder Client payload)
+    custom_graph = data.get('graph')
+    
+    if custom_graph and isinstance(custom_graph, dict):
+        adj = custom_graph
+        start_node = str(data.get('start', next(iter(adj), 'A')))
+    else:
+        # Default fallback graph
+        start_node = str(data.get('start', '1'))
+        edges = [
+            {'u': '1', 'v': '2', 'weight': 4},
+            {'u': '2', 'v': '3', 'weight': 8},
+            {'u': '1', 'v': '4', 'weight': 2},
+            {'u': '2', 'v': '5', 'weight': 6},
+            {'u': '4', 'v': '5', 'weight': 3},
+            {'u': '3', 'v': '5', 'weight': 5},
+        ]
+        adj = {node: [] for node in ['1', '2', '3', '4', '5']}
+        is_directed = 'directed' in graph_type
+
+        for e in edges:
+            u, v = e['u'], e['v']
+            adj[u].append(v)
+            if not is_directed:
+                adj[v].append(u)
+
+    visited = []
+    
+    # Traversal Logic
+    if technique == 'dfs':
+        seen = set()
+        def dfs(curr):
+            seen.add(curr)
+            visited.append(curr)
+            for nbr in sorted(adj.get(curr, [])):
+                if nbr not in seen:
+                    dfs(nbr)
+        dfs(start_node)
+    else:  # Default to BFS
+        queue = deque([start_node])
+        seen = {start_node}
+        while queue:
+            curr = queue.popleft()
+            visited.append(curr)
+            for nbr in sorted(adj.get(curr, [])):
+                if nbr not in seen:
+                    seen.add(nbr)
+                    queue.append(nbr)
+
+    return jsonify({
+        'status': 'success',
+        'technique': technique,
+        'graph_type': graph_type,
+        'order': visited
+    })
+
+
+# ================= BINARY TREE INORDER / LEVEL-ORDER =================
+@app.route('/api/tree/traverse', methods=['POST'])
+def tree_traverse():
+    data = request.get_json() or {}
+    nodes = data.get('nodes', [4, 2, 7, 1, 3, 6, 9])
+    
+    class Node:
+        def __init__(self, val):
+            self.val = val
+            self.left = None
+            self.right = None
+
+    def insert(root, val):
+        if not root:
+            return Node(val)
+        if val < root.val:
+            root.left = insert(root.left, val)
+        else:
+            root.right = insert(root.right, val)
+        return root
+
+    root = None
+    for n in nodes:
+        root = insert(root, n)
+
+    inorder_result = []
+    def inorder(curr):
+        if not curr:
+            return
+        inorder(curr.left)
+        inorder_result.append(curr.val)
+        inorder(curr.right)
+
+    inorder(root)
+
+    return jsonify({
+        'status': 'success',
+        'inorder': inorder_result
+    })
 
 
 # Start server

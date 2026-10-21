@@ -6,6 +6,9 @@ type Algorithm = 'bubble' | 'selection' | 'insertion' | 'merge' | 'quick';
 type ActiveTab = 'visualizer' | 'searching' | 'operations' | 'notations' | 'trees_graphs_ll';
 type SearchAlgorithm = 'linear' | 'binary';
 
+type GraphType = 'undirected' | 'directed' | 'undirected-weight' | 'directed-weight';
+type DsTopic = 'binary-search-tree' | 'inorder' | 'bfs-queue' | 'graph' | 'linked-list';
+
 interface Frame {
   array: { val: number; status: 'default' | 'compare' | 'swap' | 'sorted' }[];
   explanation: string;
@@ -30,6 +33,12 @@ interface GraphNode {
   status: 'default' | 'active' | 'visited';
 }
 
+interface GraphEdge {
+  u: string;
+  v: string;
+  weight?: number;
+}
+
 interface ListNode {
   val: number;
   status: 'default' | 'active' | 'visited' | 'delete';
@@ -37,19 +46,19 @@ interface ListNode {
 
 // ================= C CODE SNIPPETS =================
 const cCodeSnippets: Record<string, string> = {
-  bubble: `void bubbleSort(int arr[], int n) {\n  for (int i = 0; i < n - 1; i++) {\n    for (int j = 0; j < n - i - 1; j++) {\n      if (arr[j] > arr[j + 1]) {\n        // Swap elements\n        int temp = arr[j];\n        arr[j] = arr[j + 1];\n        arr[j + 1] = temp;\n      }\n    }\n  }\n}`,
-  selection: `void selectionSort(int arr[], int n) {\n  for (int i = 0; i < n - 1; i++) {\n    int min_idx = i;\n    for (int j = i + 1; j < n; j++) {\n      if (arr[j] < arr[min_idx])\n        min_idx = j;\n    }\n    // Swap minimum element with first element\n    int temp = arr[min_idx];\n    arr[min_idx] = arr[i];\n    arr[i] = temp;\n  }\n}`,
-  insertion: `void insertionSort(int arr[], int n) {\n  for (int i = 1; i < n; i++) {\n    int key = arr[i];\n    int j = i - 1;\n    // Move elements greater than key to one position ahead\n    while (j >= 0 && arr[j] > key) {\n      arr[j + 1] = arr[j];\n      j = j - 1;\n    }\n    arr[j + 1] = key;\n  }\n}`,
-  merge: `void merge(int arr[], int l, int m, int r) {\n  // Merge logic...\n}\n\nvoid mergeSort(int arr[], int l, int r) {\n  if (l < r) {\n    int m = l + (r - l) / 2;\n    mergeSort(arr, l, m);\n    mergeSort(arr, m + 1, r);\n    merge(arr, l, m, r);\n  }\n}`,
-  quick: `int partition(int arr[], int low, int high) {\n  int pivot = arr[high];\n  int i = (low - 1);\n  for (int j = low; j < high; j++) {\n    if (arr[j] < pivot) {\n      i++;\n      int temp = arr[i]; arr[i] = arr[j]; arr[j] = temp;\n    }\n  }\n  int temp = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = temp;\n  return (i + 1);\n}\n\nvoid quickSort(int arr[], int low, int high) {\n  if (low < high) {\n    int pi = partition(arr, low, high);\n    quickSort(arr, low, pi - 1);\n    quickSort(arr, pi + 1, high);\n  }\n}`,
-  linear: `int linearSearch(int arr[], int n, int x) {\n  for (int i = 0; i < n; i++) {\n    if (arr[i] == x)\n      return i; // Target found\n  }\n  return -1; // Target not found\n}`,
-  binary: `int binarySearch(int arr[], int l, int r, int x) {\n  while (l <= r) {\n    int m = l + (r - l) / 2;\n    if (arr[m] == x) \n      return m;\n    if (arr[m] < x) \n      l = m + 1;\n    else \n      r = m - 1;\n  }\n  return -1;\n}`
+  bubble: `void bubbleSort(int arr[], int n) {\n  for (int i = 0; i < n - 1; i++) {\n    for (int j = 0; j < n - i - 1; j++) {\n      if (arr[j] > arr[j + 1]) {\n        int temp = arr[j];\n        arr[j] = arr[j + 1];\n        arr[j + 1] = temp;\n      }\n    }\n  }\n}`,
+  selection: `void selectionSort(int arr[], int n) {\n  for (int i = 0; i < n - 1; i++) {\n    int min_idx = i;\n    for (int j = i + 1; j < n; j++) {\n      if (arr[j] < arr[min_idx]) min_idx = j;\n    }\n    int temp = arr[min_idx];\n    arr[min_idx] = arr[i];\n    arr[i] = temp;\n  }\n}`,
+  insertion: `void insertionSort(int arr[], int n) {\n  for (int i = 1; i < n; i++) {\n    int key = arr[i];\n    int j = i - 1;\n    while (j >= 0 && arr[j] > key) {\n      arr[j + 1] = arr[j];\n      j = j - 1;\n    }\n    arr[j + 1] = key;\n  }\n}`,
+  merge: `void merge(int arr[], int l, int m, int r) {\n  // Merge logic...\n}\nvoid mergeSort(int arr[], int l, int r) {\n  if (l < r) {\n    int m = l + (r - l) / 2;\n    mergeSort(arr, l, m);\n    mergeSort(arr, m + 1, r);\n    merge(arr, l, m, r);\n  }\n}`,
+  quick: `int partition(int arr[], int low, int high) {\n  int pivot = arr[high];\n  int i = (low - 1);\n  for (int j = low; j < high; j++) {\n    if (arr[j] < pivot) {\n      i++;\n      int temp = arr[i]; arr[i] = arr[j]; arr[j] = temp;\n    }\n  }\n  int temp = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = temp;\n  return (i + 1);\n}\nvoid quickSort(int arr[], int low, int high) {\n  if (low < high) {\n    int pi = partition(arr, low, high);\n    quickSort(arr, low, pi - 1);\n    quickSort(arr, pi + 1, high);\n  }\n}`,
+  linear: `int linearSearch(int arr[], int n, int x) {\n  for (int i = 0; i < n; i++) {\n    if (arr[i] == x) return i;\n  }\n  return -1;\n}`,
+  binary: `int binarySearch(int arr[], int l, int r, int x) {\n  while (l <= r) {\n    int m = l + (r - l) / 2;\n    if (arr[m] == x) return m;\n    if (arr[m] < x) l = m + 1;\n    else r = m - 1;\n  }\n  return -1;\n}`
 };
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('visualizer');
 
-  // Auth states
+  // Simple Auth states
   const [user, setUser] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [isLoginMode, setIsLoginMode] = useState<boolean>(true);
@@ -75,12 +84,14 @@ export default function App() {
   const [frames, setFrames] = useState<Frame[]>([]);
   const [currentFrameIdx, setCurrentFrameIdx] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-
   const timerRef = useRef<number | null>(null);
 
-  // ================= TREES, GRAPHS & LINKED LIST STATES =================
+  // ================= TREES & GRAPHS STATES =================
   const reelCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [dsTopic, setDsTopic] = useState<'invert' | 'inorder' | 'bfs-queue' | 'graph-bfs' | 'linked-list'>('invert');
+  const [dsTopic, setDsTopic] = useState<DsTopic>('binary-search-tree');
+  const [graphType, setGraphType] = useState<GraphType>('undirected');
+  const [graphTraversalAlgo, setGraphTraversalAlgo] = useState<'bfs' | 'dfs'>('bfs');
+
   const [reelPlaying, setReelPlaying] = useState<boolean>(false);
   const [reelStack, setReelStack] = useState<string[]>([]);
   const [reelQueue, setReelQueue] = useState<string[]>([]);
@@ -88,7 +99,6 @@ export default function App() {
   const [activeCodeLine, setActiveCodeLine] = useState<number>(0);
   const reelCancelled = useRef<boolean>(false);
 
-  // Custom array/nodes input state
   const [customTreeInput, setCustomTreeInput] = useState<string>('4, 2, 7, 1, 3, 6, 9');
 
   // Linked List State
@@ -101,24 +111,16 @@ export default function App() {
   const [llInputVal, setLlInputVal] = useState<string>('');
 
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
-  // Default Tree Root Ref
   const treeRoot = useRef<TreeNode | null>(null);
 
   // BST Insertion helper
   const insertIntoBST = (rootNode: TreeNode | null, val: number): TreeNode => {
-    if (!rootNode) {
-      return { val, status: 'default', x: 220, y: 40, left: null, right: null };
-    }
-    if (val < rootNode.val) {
-      rootNode.left = insertIntoBST(rootNode.left, val);
-    } else if (val > rootNode.val) {
-      rootNode.right = insertIntoBST(rootNode.right, val);
-    }
+    if (!rootNode) return { val, status: 'default', x: 220, y: 40, left: null, right: null };
+    if (val < rootNode.val) rootNode.left = insertIntoBST(rootNode.left, val);
+    else if (val > rootNode.val) rootNode.right = insertIntoBST(rootNode.right, val);
     return rootNode;
   };
 
-  // Node position recalculation
   const updateTreeCoordinates = (node: TreeNode | null, x: number, y: number, gap: number) => {
     if (!node) return;
     node.x = x;
@@ -184,8 +186,14 @@ export default function App() {
     { id: '4', x: 140, y: 160, status: 'default' },
     { id: '5', x: 300, y: 160, status: 'default' },
   ]);
-  const graphEdges = [
-    ['1', '2'], ['2', '3'], ['1', '4'], ['2', '5'], ['4', '5'], ['3', '5']
+
+  const graphEdges: GraphEdge[] = [
+    { u: '1', v: '2', weight: 4 },
+    { u: '2', v: '3', weight: 8 },
+    { u: '1', v: '4', weight: 2 },
+    { u: '2', v: '5', weight: 6 },
+    { u: '4', v: '5', weight: 3 },
+    { u: '3', v: '5', weight: 5 },
   ];
 
   // Draw Tree on Canvas
@@ -228,18 +236,54 @@ export default function App() {
     ctx.fillText(node.val.toString(), node.x, node.y);
   };
 
-  // Draw Graph on Canvas
+  // Draw Graph on Canvas with Directed Arrows and Weights
   const drawGraphOnCanvas = (ctx: CanvasRenderingContext2D) => {
+    const isDirected = graphType.includes('directed');
+    const hasWeight = graphType.includes('weight');
+
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#475569';
-    graphEdges.forEach(([u, v]) => {
-      const n1 = graphNodes.current.find((n) => n.id === u);
-      const n2 = graphNodes.current.find((n) => n.id === v);
-      if (n1 && n2) {
+
+    graphEdges.forEach((edge) => {
+      const n1 = graphNodes.current.find((n) => n.id === edge.u);
+      const n2 = graphNodes.current.find((n) => n.id === edge.v);
+      if (!n1 || !n2) return;
+
+      const angle = Math.atan2(n2.y - n1.y, n2.x - n1.x);
+      const radius = 18;
+      const startX = n1.x + radius * Math.cos(angle);
+      const startY = n1.y + radius * Math.sin(angle);
+      const endX = n2.x - radius * Math.cos(angle);
+      const endY = n2.y - radius * Math.sin(angle);
+
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      if (isDirected) {
+        const arrowLength = 10;
+        ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
-        ctx.moveTo(n1.x, n1.y);
-        ctx.lineTo(n2.x, n2.y);
-        ctx.stroke();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(
+          endX - arrowLength * Math.cos(angle - Math.PI / 6),
+          endY - arrowLength * Math.sin(angle - Math.PI / 6)
+        );
+        ctx.lineTo(
+          endX - arrowLength * Math.cos(angle + Math.PI / 6),
+          endY - arrowLength * Math.sin(angle + Math.PI / 6)
+        );
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      if (hasWeight && edge.weight) {
+        const midX = (n1.x + n2.x) / 2;
+        const midY = (n1.y + n2.y) / 2 - 6;
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`w:${edge.weight}`, midX, midY);
       }
     });
 
@@ -271,7 +315,8 @@ export default function App() {
     const boxH = 34;
 
     linkedList.forEach((node, idx) => {
-      ctx.fillStyle = node.status === 'active' ? '#f59e0b' : node.status === 'visited' ? '#10b981' : node.status === 'delete' ? '#ef4444' : '#1e293b';
+      ctx.fillStyle =
+        node.status === 'active' ? '#f59e0b' : node.status === 'visited' ? '#10b981' : node.status === 'delete' ? '#ef4444' : '#1e293b';
       ctx.fillRect(startX, startY, boxW, boxH);
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 1.5;
@@ -315,7 +360,7 @@ export default function App() {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (dsTopic === 'graph-bfs') {
+    if (dsTopic === 'graph') {
       drawGraphOnCanvas(ctx);
     } else if (dsTopic === 'linked-list') {
       drawLinkedListOnCanvas(ctx);
@@ -332,57 +377,50 @@ export default function App() {
         drawReelCanvas();
       }
     }
-  }, [activeTab, dsTopic, linkedList]);
+  }, [activeTab, dsTopic, graphType, linkedList]);
 
-  // Tree Invert Algorithm (Recursion)
-  const runInvertReel = async () => {
+  // ================= BINARY SEARCH (BST SEARCH VISUALIZATION) =================
+  const runBinarySearchInTree = async () => {
+    if (!treeRoot.current) return;
     reelCancelled.current = false;
     setReelPlaying(true);
     setTraversalOutput([]);
+    setReelStack([]);
 
-    async function invert(node: TreeNode | null) {
-      if (!node || reelCancelled.current) {
-        setActiveCodeLine(2);
-        return;
+    const target = 6; // Example target value to search
+    let curr: TreeNode | null = treeRoot.current;
+    const visited: string[] = [];
+
+    while (curr && !reelCancelled.current) {
+      setActiveCodeLine(2);
+      curr.status = 'active';
+      visited.push(curr.val.toString());
+      setTraversalOutput([...visited]);
+      setReelStack([`Compare(${curr.val}, ${target})`]);
+      drawReelCanvas();
+      await sleep(700);
+
+      if (curr.val === target) {
+        curr.status = 'visited';
+        setActiveCodeLine(3);
+        drawReelCanvas();
+        break;
+      } else if (target < curr.val) {
+        curr.status = 'visited';
+        setActiveCodeLine(4);
+        curr = curr.left;
+      } else {
+        curr.status = 'visited';
+        setActiveCodeLine(5);
+        curr = curr.right;
       }
-      setActiveCodeLine(1);
-      node.status = 'active';
-      setReelStack((prev) => [`invert(${node.val})`, ...prev]);
       drawReelCanvas();
       await sleep(600);
-
-      setActiveCodeLine(3);
-      node.status = 'swapping';
-      const temp = node.left;
-      node.left = node.right;
-      node.right = temp;
-
-      if (node.left && node.right) {
-        const tempX = node.left.x;
-        node.left.x = node.right.x;
-        node.right.x = tempX;
-      }
-      drawReelCanvas();
-      await sleep(600);
-
-      node.status = 'visited';
-      drawReelCanvas();
-
-      setActiveCodeLine(4);
-      await invert(node.left);
-
-      setActiveCodeLine(5);
-      await invert(node.right);
-
-      setReelStack((prev) => prev.filter((s) => s !== `invert(${node.val})`));
     }
-
-    await invert(treeRoot.current);
-    setActiveCodeLine(6);
     setReelPlaying(false);
   };
 
-  // ================= BACKEND INTEGRATED INORDER TRAVERSAL =================
+  // BST Inorder Traversal
   const runInorderReelWithBackend = async () => {
     reelCancelled.current = false;
     setReelPlaying(true);
@@ -423,7 +461,6 @@ export default function App() {
         await sleep(700);
       }
     } catch (err) {
-      console.warn('Backend connection failed, running locally:', err);
       const visitedFallback: string[] = [];
       async function inorder(node: TreeNode | null) {
         if (!node || reelCancelled.current) return;
@@ -451,6 +488,7 @@ export default function App() {
     }
   };
 
+  // BFS Queue Level Order
   const runBFSQueueReel = async () => {
     if (!treeRoot.current) return;
     reelCancelled.current = false;
@@ -485,10 +523,12 @@ export default function App() {
     setReelPlaying(false);
   };
 
-  const runGraphBFSReel = async () => {
+  // ================= GRAPH BFS & DFS =================
+  const runGraphBFS = async () => {
     reelCancelled.current = false;
     setReelPlaying(true);
     graphNodes.current.forEach((n) => (n.status = 'default'));
+    const isDirected = graphType.includes('directed');
     const visitedSet = new Set<string>();
     const queue: string[] = ['1'];
     visitedSet.add('1');
@@ -508,10 +548,10 @@ export default function App() {
 
       if (node) node.status = 'visited';
 
-      graphEdges.forEach(([u, v]) => {
+      graphEdges.forEach((edge) => {
         let nbr = '';
-        if (u === currId && !visitedSet.has(v)) nbr = v;
-        if (v === currId && !visitedSet.has(u)) nbr = u;
+        if (edge.u === currId && !visitedSet.has(edge.v)) nbr = edge.v;
+        if (!isDirected && edge.v === currId && !visitedSet.has(edge.u)) nbr = edge.u;
 
         if (nbr) {
           visitedSet.add(nbr);
@@ -527,7 +567,46 @@ export default function App() {
     setReelPlaying(false);
   };
 
-  // ================= BACKEND INTEGRATED LINKED LIST =================
+  const runGraphDFS = async () => {
+    reelCancelled.current = false;
+    setReelPlaying(true);
+    graphNodes.current.forEach((n) => (n.status = 'default'));
+    const isDirected = graphType.includes('directed');
+    const visitedSet = new Set<string>();
+    const result: string[] = [];
+    setTraversalOutput([]);
+    setReelStack([]);
+
+    async function dfs(currId: string) {
+      if (reelCancelled.current) return;
+      visitedSet.add(currId);
+      setReelStack((prev) => [`dfs(${currId})`, ...prev]);
+      const node = graphNodes.current.find((n) => n.id === currId);
+      if (node) node.status = 'active';
+      result.push(currId);
+      setTraversalOutput([...result]);
+      drawReelCanvas();
+      await sleep(700);
+
+      if (node) node.status = 'visited';
+
+      for (const edge of graphEdges) {
+        let nbr = '';
+        if (edge.u === currId && !visitedSet.has(edge.v)) nbr = edge.v;
+        if (!isDirected && edge.v === currId && !visitedSet.has(edge.u)) nbr = edge.u;
+
+        if (nbr && !visitedSet.has(nbr)) {
+          await dfs(nbr);
+        }
+      }
+      setReelStack((prev) => prev.filter((item) => item !== `dfs(${currId})`));
+    }
+
+    await dfs('1');
+    setReelPlaying(false);
+  };
+
+  // Linked List Traversal
   const runLinkedListWithBackend = async () => {
     reelCancelled.current = false;
     setReelPlaying(true);
@@ -561,8 +640,6 @@ export default function App() {
       setLinkedList((prev) => prev.map((item) => ({ ...item, status: 'visited' })));
       setActiveCodeLine(4);
     } catch (err) {
-      console.warn('Backend connection failed, running locally:', err);
-      // Fallback
       const visited: string[] = [];
       for (let i = 0; i < linkedList.length; i++) {
         if (reelCancelled.current) break;
@@ -611,7 +688,7 @@ export default function App() {
     setReelQueue([]);
     setTraversalOutput([]);
     setActiveCodeLine(0);
-    if (dsTopic === 'graph-bfs') {
+    if (dsTopic === 'graph') {
       graphNodes.current.forEach((n) => (n.status = 'default'));
     } else if (dsTopic === 'linked-list') {
       setLinkedList((prev) => prev.map((n) => ({ ...n, status: 'default' })));
@@ -629,7 +706,7 @@ export default function App() {
     drawReelCanvas();
   };
 
-  // Generate Frame Timeline for Sorting
+  // Sorting Frames
   const generateFrames = (baseNums: number[], algo: Algorithm) => {
     const generatedFrames: Frame[] = [];
     const n = baseNums.length;
@@ -700,13 +777,6 @@ export default function App() {
 
       for (let i = 0; i < n; i++) {
         let minIdx = i;
-        generatedFrames.push({
-          array: makeBars(arr, [...statusArr]),
-          explanation: `Setting initial minimum index to [${i}] with value ${arr[i]}`,
-          comparisons: comp,
-          swaps: swp,
-        });
-
         for (let j = i + 1; j < n; j++) {
           comp++;
           const currentStatuses = [...statusArr];
@@ -722,12 +792,6 @@ export default function App() {
 
           if (arr[j] < arr[minIdx]) {
             minIdx = j;
-            generatedFrames.push({
-              array: makeBars(arr, currentStatuses),
-              explanation: `Found smaller element ${arr[minIdx]} at index [${minIdx}]`,
-              comparisons: comp,
-              swaps: swp,
-            });
           }
         }
 
@@ -736,12 +800,6 @@ export default function App() {
           const temp = arr[i];
           arr[i] = arr[minIdx];
           arr[minIdx] = temp;
-          generatedFrames.push({
-            array: makeBars(arr, [...statusArr]),
-            explanation: `Swapped minimum element ${arr[i]} into index [${i}]`,
-            comparisons: comp,
-            swaps: swp,
-          });
         }
         statusArr[i] = 'sorted';
       }
@@ -753,61 +811,26 @@ export default function App() {
         let j = i;
         const key = arr[i];
 
-        generatedFrames.push({
-          array: makeBars(arr, [...statusArr]),
-          explanation: `Selected key element ${key} at index [${i}]`,
-          comparisons: comp,
-          swaps: swp,
-        });
-
         while (j > 0 && arr[j] < arr[j - 1]) {
           comp++;
           swp++;
-          const compStatuses = [...statusArr];
-          compStatuses[j] = 'swap';
-          compStatuses[j - 1] = 'compare';
-
           const temp = arr[j];
           arr[j] = arr[j - 1];
           arr[j - 1] = temp;
-
-          generatedFrames.push({
-            array: makeBars(arr, compStatuses),
-            explanation: `Shifting element: ${temp} < ${arr[j]}, moved to index [${j - 1}]`,
-            comparisons: comp,
-            swaps: swp,
-          });
           j--;
         }
         statusArr[i] = 'sorted';
       }
       statusArr.fill('sorted');
-      generatedFrames.push({
-        array: makeBars(arr, statusArr),
-        explanation: `Array is fully sorted`,
-        comparisons: comp,
-        swaps: swp,
-      });
     } else if (algo === 'merge') {
       const statusArr: ('default' | 'compare' | 'swap' | 'sorted')[] = new Array(n).fill('default');
-
       const mergeHelper = (start: number, mid: number, end: number) => {
         const left = arr.slice(start, mid + 1);
         const right = arr.slice(mid + 1, end + 1);
 
-        generatedFrames.push({
-          array: makeBars(arr, [...statusArr]),
-          explanation: `Divide: Subarrays [${start}..${mid}] and [${mid + 1}..${end}]`,
-          comparisons: comp,
-          swaps: swp,
-        });
-
         let i = 0, j = 0, k = start;
         while (i < left.length && j < right.length) {
           comp++;
-          const activeStatuses = [...statusArr];
-          activeStatuses[k] = 'compare';
-
           if (left[i] <= right[j]) {
             arr[k] = left[i];
             i++;
@@ -816,13 +839,6 @@ export default function App() {
             j++;
             swp++;
           }
-          activeStatuses[k] = 'swap';
-          generatedFrames.push({
-            array: makeBars(arr, activeStatuses),
-            explanation: `Merged element ${arr[k]} into position [${k}]`,
-            comparisons: comp,
-            swaps: swp,
-          });
           k++;
         }
 
@@ -830,29 +846,13 @@ export default function App() {
           arr[k] = left[i];
           i++;
           k++;
-          generatedFrames.push({
-            array: makeBars(arr, [...statusArr]),
-            explanation: `Copying remaining left elements`,
-            comparisons: comp,
-            swaps: swp,
-          });
         }
-
         while (j < right.length) {
           arr[k] = right[j];
           j++;
           k++;
-          generatedFrames.push({
-            array: makeBars(arr, [...statusArr]),
-            explanation: `Copying remaining right elements`,
-            comparisons: comp,
-            swaps: swp,
-          });
         }
-
-        for (let idx = start; idx <= end; idx++) {
-          statusArr[idx] = 'sorted';
-        }
+        for (let idx = start; idx <= end; idx++) statusArr[idx] = 'sorted';
       };
 
       const divide = (start: number, end: number) => {
@@ -865,75 +865,26 @@ export default function App() {
 
       divide(0, n - 1);
       statusArr.fill('sorted');
-      generatedFrames.push({
-        array: makeBars(arr, statusArr),
-        explanation: `Array merged and sorted successfully`,
-        comparisons: comp,
-        swaps: swp,
-      });
     } else if (algo === 'quick') {
       const statusArr: ('default' | 'compare' | 'swap' | 'sorted')[] = new Array(n).fill('default');
-
       const partition = (low: number, high: number) => {
         const pivot = arr[high];
         let i = low - 1;
 
-        generatedFrames.push({
-          array: makeBars(arr, [...statusArr]),
-          explanation: `Selected pivot ${pivot} at index [${high}]`,
-          comparisons: comp,
-          swaps: swp,
-        });
-
         for (let j = low; j < high; j++) {
           comp++;
-          const compStatuses = [...statusArr];
-          compStatuses[high] = 'compare'; // Pivot ko yellow dikhane ke liye
-          compStatuses[j] = 'compare';
-
-          generatedFrames.push({
-            array: makeBars(arr, compStatuses),
-            explanation: `Comparing arr[${j}] (${arr[j]}) with pivot (${pivot})`,
-            comparisons: comp,
-            swaps: swp,
-          });
-
           if (arr[j] < pivot) {
             i++;
             swp++;
             const temp = arr[i];
             arr[i] = arr[j];
             arr[j] = temp;
-
-            const swapStatuses = [...statusArr];
-            swapStatuses[i] = 'swap';
-            swapStatuses[j] = 'swap';
-            swapStatuses[high] = 'compare';
-
-            generatedFrames.push({
-              array: makeBars(arr, swapStatuses),
-              explanation: `Swapped arr[${i}] and arr[${j}] (Element < Pivot)`,
-              comparisons: comp,
-              swaps: swp,
-            });
           }
         }
         swp++;
         const temp = arr[i + 1];
         arr[i + 1] = arr[high];
         arr[high] = temp;
-
-        const swapPivotStatuses = [...statusArr];
-        swapPivotStatuses[i + 1] = 'swap';
-        swapPivotStatuses[high] = 'swap';
-
-        generatedFrames.push({
-          array: makeBars(arr, swapPivotStatuses),
-          explanation: `Placed pivot ${pivot} at its correct sorted position [${i + 1}]`,
-          comparisons: comp,
-          swaps: swp,
-        });
-
         statusArr[i + 1] = 'sorted';
         return i + 1;
       };
@@ -950,12 +901,6 @@ export default function App() {
 
       quickSortHelper(0, n - 1);
       statusArr.fill('sorted');
-      generatedFrames.push({
-        array: makeBars(arr, statusArr),
-        explanation: `Array is fully sorted`,
-        comparisons: comp,
-        swaps: swp,
-      });
     }
 
     setFrames(generatedFrames);
@@ -1002,7 +947,7 @@ export default function App() {
         });
 
         if (arr[i] === target) {
-          currentStatuses[i] = 'sorted'; // Found (Green)
+          currentStatuses[i] = 'sorted';
           generatedFrames.push({
             array: makeBars(arr, currentStatuses),
             explanation: `Target ${target} found at index [${i}]! 🎉`,
@@ -1014,16 +959,9 @@ export default function App() {
         }
       }
       if (!found) generatedFrames.push({ array: makeBars(arr, statusArr), explanation: `Target ${target} not found in array.`, comparisons: comp, swaps: 0 });
-
     } else if (searchAlgo === 'binary') {
       arr = [...rawNumbers].sort((a, b) => a - b);
       const statusArr: ('default' | 'compare' | 'swap' | 'sorted')[] = new Array(arr.length).fill('default');
-
-      generatedFrames.push({
-        array: makeBars(arr),
-        explanation: `Binary Search requires a sorted array. Target: ${target}`,
-        comparisons: comp, swaps: 0,
-      });
 
       let low = 0;
       let high = arr.length - 1;
@@ -1033,9 +971,8 @@ export default function App() {
         comp++;
         let mid = Math.floor((low + high) / 2);
         const currentStatuses = [...statusArr];
-        
-        for (let k = low; k <= high; k++) currentStatuses[k] = 'swap'; // Active Search Space (Red)
-        currentStatuses[mid] = 'compare'; // Mid Element (Yellow)
+        for (let k = low; k <= high; k++) currentStatuses[k] = 'swap';
+        currentStatuses[mid] = 'compare';
 
         generatedFrames.push({
           array: makeBars(arr, currentStatuses),
@@ -1054,10 +991,8 @@ export default function App() {
           found = true;
           break;
         } else if (arr[mid] < target) {
-          generatedFrames.push({ array: makeBars(arr, currentStatuses), explanation: `${arr[mid]} < ${target}. Go Right. low = ${mid + 1}`, comparisons: comp, swaps: 0 });
           low = mid + 1;
         } else {
-          generatedFrames.push({ array: makeBars(arr, currentStatuses), explanation: `${arr[mid]} > ${target}. Go Left. high = ${mid - 1}`, comparisons: comp, swaps: 0 });
           high = mid - 1;
         }
       }
@@ -1066,10 +1001,9 @@ export default function App() {
 
     setFrames(generatedFrames);
     setCurrentFrameIdx(0);
-    setIsPlaying(true); // Automatically play animation
+    setIsPlaying(true);
   };
 
-  // Playback timer
   useEffect(() => {
     if (isPlaying) {
       timerRef.current = window.setInterval(() => {
@@ -1128,15 +1062,7 @@ export default function App() {
       alert('Please enter at least 2 comma-separated numbers (e.g. 50, 20, 80, 10)');
       return;
     }
-
     setRawNumbers(parsed);
-
-    try {
-      axios.post(`http://127.0.0.1:5000/api/sort/${algorithm}`, {
-        array: parsed,
-        user: user || 'guest',
-      }).catch(() => {});
-    } catch (e) {}
   };
 
   const handleInsert = (e: React.FormEvent) => {
@@ -1197,11 +1123,27 @@ export default function App() {
     <div className="algo-app">
       {/* Top Navbar */}
       <header className="glass-box app-nav">
-        <div className="brand-area">
-          <div className="brand-badge">⚡</div>
+        <div className="brand-area" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img
+            src="/logo.png"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (!target.src.includes('/download.png')) {
+                target.src = '/download.png';
+              } else {
+                target.src = '/icons.svg';
+              }
+            }}
+            alt="Algosphere Logo"
+            style={{ height: '38px', width: 'auto', objectFit: 'contain' }}
+          />
           <div className="brand-text">
-            <h1>AlgoSphere</h1>
-            <p>Interactive Video-Style Algorithm & Data Structure Suite</p>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#f8fafc' }}>
+              Algo<span style={{ color: '#38bdf8' }}>Sphere</span>
+            </h1>
+            <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>
+              Interactive Algorithm, Tree & Graph Visualizer
+            </p>
           </div>
         </div>
 
@@ -1231,7 +1173,6 @@ export default function App() {
           >
             📚 Notations Guide
           </button>
-
           <button
             className={`nav-tab-btn ${activeTab === 'trees_graphs_ll' ? 'active' : ''}`}
             onClick={() => setActiveTab('trees_graphs_ll')}
@@ -1312,9 +1253,7 @@ export default function App() {
           <section className="glass-box video-player-stage">
             <div className="video-explanation-banner">
               <span className="step-pill-video">Step #{currentFrameIdx + 1}</span>
-              <div className="step-caption">
-                {currentFrame.explanation}
-              </div>
+              <div className="step-caption">{currentFrame.explanation}</div>
             </div>
 
             <div className="canvas-area">
@@ -1379,7 +1318,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* C CODE DISPLAY FOR SORTING */}
             <div className="glass-box code-display" style={{ marginTop: '16px', background: '#090d16', border: '1px solid #1e293b', padding: '16px', borderRadius: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
                 <h4 style={{ margin: 0, color: '#38bdf8', fontSize: '14px' }}>💻 C Language Code: {algorithm.toUpperCase()} SORT</h4>
@@ -1452,17 +1390,6 @@ export default function App() {
                   <button className="v-btn v-btn-play" onClick={togglePlay}>{isPlaying ? '⏸ Pause' : '▶ Play Search'}</button>
                   <button className="v-btn" onClick={handleStepNext}>Next ⏩</button>
                 </div>
-              </div>
-
-              {/* C CODE DISPLAY FOR SEARCHING */}
-              <div className="glass-box code-display" style={{ marginTop: '16px', background: '#090d16', border: '1px solid #1e293b', padding: '16px', borderRadius: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
-                  <h4 style={{ margin: 0, color: '#10b981', fontSize: '14px' }}>💻 C Language Code: {searchAlgo.toUpperCase()} SEARCH</h4>
-                  <span style={{ fontSize: '10px', background: '#161b22', padding: '4px 8px', borderRadius: '4px', color: '#94a3b8' }}>search.c</span>
-                </div>
-                <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '12px', fontFamily: 'monospace', overflowX: 'auto' }}>
-                  {cCodeSnippets[searchAlgo]}
-                </pre>
               </div>
             </section>
           ) : (
@@ -1538,36 +1465,6 @@ export default function App() {
               </form>
             </div>
           </div>
-
-          <section className="glass-box arranged-section">
-            <div className="arranged-header">
-              <h3>Array Elements & Real-Time Indices</h3>
-              <span style={{ fontSize: '12px', color: '#38bdf8' }}>{rawNumbers.length} Total Elements</span>
-            </div>
-            <div className="chips-list">
-              {rawNumbers.map((val, idx) => (
-                <div key={idx} className="val-badge">
-                  <span className="idx-tag">Index [{idx}]</span>
-                  <strong className="num-val">{val}</strong>
-                  <button
-                    className="quick-del-btn"
-                    title={`Delete index ${idx}`}
-                    onClick={() => {
-                      if (rawNumbers.length <= 2) {
-                        alert('Array must contain at least 2 elements.');
-                        return;
-                      }
-                      const updated = rawNumbers.filter((_, i) => i !== idx);
-                      setRawNumbers(updated);
-                      setCustomInput(updated.join(', '));
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       )}
 
@@ -1575,102 +1472,23 @@ export default function App() {
       {activeTab === 'notations' && (
         <div className="notations-page">
           <div className="glass-box not-intro-card">
-            <h2>Asymptotic Notations (Which notation occurs when?)</h2>
-            <p>
-              In algorithm analysis, efficiency and runtime growth are measured using three primary mathematical bounds:
-            </p>
+            <h2>Asymptotic Notations</h2>
             <div className="notation-cards-row">
               <div className="notation-box">
                 <span className="symbol-pill">Big-O (O)</span>
                 <h4>Worst Case (Upper Bound)</h4>
-                <p>The maximum time an algorithm takes. Occurs when input is in the most unfavorable order (e.g., Reverse sorted array).</p>
+                <p>The maximum time an algorithm takes.</p>
               </div>
               <div className="notation-box">
                 <span className="symbol-pill omega-pill">Big-Omega (Ω)</span>
                 <h4>Best Case (Lower Bound)</h4>
-                <p>The minimum time required. Occurs under ideal input conditions (e.g., Array is already sorted).</p>
+                <p>The minimum time required under ideal conditions.</p>
               </div>
               <div className="notation-box">
                 <span className="symbol-pill theta-pill">Big-Theta (Θ)</span>
                 <h4>Average Case (Tight Bound)</h4>
-                <p>Expected typical performance under normal conditions with randomly ordered input elements.</p>
+                <p>Expected typical performance under normal conditions.</p>
               </div>
-            </div>
-          </div>
-
-          <div className="glass-box table-card">
-            <h3>Algorithm Time & Space Complexities</h3>
-            <div className="table-responsive">
-              <table className="complexity-table">
-                <thead>
-                  <tr>
-                    <th>Algorithm</th>
-                    <th>Best Case (Ω)</th>
-                    <th>Average Case (Θ)</th>
-                    <th>Worst Case (O)</th>
-                    <th>Space Complexity</th>
-                    <th>Condition / Scenario</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>Bubble Sort</strong></td>
-                    <td><span className="badge-green">O(N)</span></td>
-                    <td><span className="badge-orange">O(N²)</span></td>
-                    <td><span className="badge-red">O(N²)</span></td>
-                    <td>O(1)</td>
-                    <td><strong>Best:</strong> Already Sorted Array.<br /><strong>Worst:</strong> Reverse Sorted Array.</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Selection Sort</strong></td>
-                    <td><span className="badge-orange">O(N²)</span></td>
-                    <td><span className="badge-orange">O(N²)</span></td>
-                    <td><span className="badge-red">O(N²)</span></td>
-                    <td>O(1)</td>
-                    <td><strong>Always O(N²):</strong> Scans the entire unsorted partition to find the minimum element every pass.</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Insertion Sort</strong></td>
-                    <td><span className="badge-green">O(N)</span></td>
-                    <td><span className="badge-orange">O(N²)</span></td>
-                    <td><span className="badge-red">O(N²)</span></td>
-                    <td>O(1)</td>
-                    <td><strong>Best:</strong> Array is already sorted.<br /><strong>Worst:</strong> Array is in descending reverse order.</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Merge Sort</strong></td>
-                    <td><span className="badge-blue">O(N log N)</span></td>
-                    <td><span className="badge-blue">O(N log N)</span></td>
-                    <td><span className="badge-blue">O(N log N)</span></td>
-                    <td>O(N)</td>
-                    <td><strong>Guaranteed O(N log N):</strong> Consistently divides array into equal halves using Divide & Conquer.</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Quick Sort</strong></td>
-                    <td><span className="badge-blue">O(N log N)</span></td>
-                    <td><span className="badge-blue">O(N log N)</span></td>
-                    <td><span className="badge-red">O(N²)</span></td>
-                    <td>O(log N)</td>
-                    <td><strong>Worst:</strong> Pivot is always smallest/largest element (e.g. Sorted Array).</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Linear Search</strong></td>
-                    <td><span className="badge-green">O(1)</span></td>
-                    <td><span className="badge-orange">O(N)</span></td>
-                    <td><span className="badge-red">O(N)</span></td>
-                    <td>O(1)</td>
-                    <td><strong>Best:</strong> Target is at the first index.</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Binary Search</strong></td>
-                    <td><span className="badge-green">O(1)</span></td>
-                    <td><span className="badge-blue">O(log N)</span></td>
-                    <td><span className="badge-blue">O(log N)</span></td>
-                    <td>O(1)</td>
-                    <td><strong>Requirement:</strong> Array must be sorted before performing Binary Search.</td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           </div>
         </div>
@@ -1679,14 +1497,14 @@ export default function App() {
       {/* ================= PAGE 5: TREES, GRAPHS & LINKED LIST ================= */}
       {activeTab === 'trees_graphs_ll' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0' }}>
-          {/* Concept Switcher */}
+          {/* Main Category Switches */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
               className="tab-btn"
-              style={{ background: dsTopic === 'invert' ? '#0284c7' : '#1e293b' }}
-              onClick={() => { setDsTopic('invert'); handleResetReel(); }}
+              style={{ background: dsTopic === 'binary-search-tree' ? '#0284c7' : '#1e293b' }}
+              onClick={() => { setDsTopic('binary-search-tree'); handleResetReel(); }}
             >
-              🌳 Invert Binary Tree
+              🔍 Binary Search (BST)
             </button>
             <button
               className="tab-btn"
@@ -1704,10 +1522,10 @@ export default function App() {
             </button>
             <button
               className="tab-btn"
-              style={{ background: dsTopic === 'graph-bfs' ? '#0284c7' : '#1e293b' }}
-              onClick={() => { setDsTopic('graph-bfs'); handleResetReel(); }}
+              style={{ background: dsTopic === 'graph' ? '#0284c7' : '#1e293b' }}
+              onClick={() => { setDsTopic('graph'); handleResetReel(); }}
             >
-              🕸️ Graph BFS Traversal
+              🕸️ Graph Topics & Traversals
             </button>
             <button
               className="tab-btn"
@@ -1718,41 +1536,98 @@ export default function App() {
             </button>
           </div>
 
-          {/* ================= CUSTOM ARRAY / TREE INPUT TOOLBAR ================= */}
-          <form
-            onSubmit={handleBuildCustomArray}
-            style={{
-              display: 'flex',
-              gap: '8px',
-              marginBottom: '20px',
-              width: '440px',
-              maxWidth: '95vw',
-            }}
-          >
-            <input
-              type="text"
-              value={customTreeInput}
-              onChange={(e) => setCustomTreeInput(e.target.value)}
-              placeholder={
-                dsTopic === 'linked-list'
-                  ? 'Enter list e.g. 10, 20, 30, 40'
-                  : 'Enter tree array e.g. 45, 20, 75, 10, 30'
-              }
+          {/* Graph Sub-Topic Bar: Directed, Undirected, Weighted & BFS/DFS */}
+          {dsTopic === 'graph' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  className="tab-btn"
+                  style={{ background: graphType === 'undirected' ? '#10b981' : '#1e293b', fontSize: '12px' }}
+                  onClick={() => { setGraphType('undirected'); handleResetReel(); }}
+                >
+                  Undirected Graph
+                </button>
+                <button
+                  className="tab-btn"
+                  style={{ background: graphType === 'directed' ? '#10b981' : '#1e293b', fontSize: '12px' }}
+                  onClick={() => { setGraphType('directed'); handleResetReel(); }}
+                >
+                  Directed Graph
+                </button>
+                <button
+                  className="tab-btn"
+                  style={{ background: graphType === 'undirected-weight' ? '#10b981' : '#1e293b', fontSize: '12px' }}
+                  onClick={() => { setGraphType('undirected-weight'); handleResetReel(); }}
+                >
+                  Undirected Weighted Graph
+                </button>
+                <button
+                  className="tab-btn"
+                  style={{ background: graphType === 'directed-weight' ? '#10b981' : '#1e293b', fontSize: '12px' }}
+                  onClick={() => { setGraphType('directed-weight'); handleResetReel(); }}
+                >
+                  Directed Weighted Graph
+                </button>
+              </div>
+
+              {/* Traversal Selector */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Graph Traversing:</span>
+                <button
+                  className="v-btn"
+                  style={{ background: graphTraversalAlgo === 'bfs' ? '#0284c7' : 'transparent', fontSize: '11px' }}
+                  onClick={() => { setGraphTraversalAlgo('bfs'); handleResetReel(); }}
+                >
+                  BFS (Breadth First)
+                </button>
+                <button
+                  className="v-btn"
+                  style={{ background: graphTraversalAlgo === 'dfs' ? '#0284c7' : 'transparent', fontSize: '11px' }}
+                  onClick={() => { setGraphTraversalAlgo('dfs'); handleResetReel(); }}
+                >
+                  DFS (Depth First)
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Custom Array / Tree Input Toolbar */}
+          {dsTopic !== 'graph' && (
+            <form
+              onSubmit={handleBuildCustomArray}
               style={{
-                flex: 1,
-                padding: '10px 14px',
-                background: '#161b22',
-                border: '1px solid #30363d',
-                borderRadius: '8px',
-                color: '#f0f6fc',
-                fontFamily: 'monospace',
-                fontSize: '13px',
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '20px',
+                width: '440px',
+                maxWidth: '95vw',
               }}
-            />
-            <button type="submit" className="btn-set" style={{ cursor: 'pointer', padding: '10px 16px' }}>
-              {dsTopic === 'linked-list' ? 'Set List' : 'Set Tree (BST)'}
-            </button>
-          </form>
+            >
+              <input
+                type="text"
+                value={customTreeInput}
+                onChange={(e) => setCustomTreeInput(e.target.value)}
+                placeholder={
+                  dsTopic === 'linked-list'
+                    ? 'Enter list e.g. 10, 20, 30, 40'
+                    : 'Enter tree array e.g. 45, 20, 75, 10, 30'
+                }
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  background: '#161b22',
+                  border: '1px solid #30363d',
+                  borderRadius: '8px',
+                  color: '#f0f6fc',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                }}
+              />
+              <button type="submit" className="btn-set" style={{ cursor: 'pointer', padding: '10px 16px' }}>
+                {dsTopic === 'linked-list' ? 'Set List' : 'Set Tree (BST)'}
+              </button>
+            </form>
+          )}
 
           {/* Main Frame Viewport */}
           <div
@@ -1771,19 +1646,16 @@ export default function App() {
             <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b' }}>
               <div>
                 <span style={{ fontSize: '10px', background: '#0284c7', padding: '2px 8px', borderRadius: '10px', color: '#fff', fontWeight: 'bold' }}>
-                  DATA STRUCTURE
+                  {dsTopic === 'graph' ? 'GRAPH SUITE' : 'DATA STRUCTURE'}
                 </span>
                 <h3 style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#38bdf8', letterSpacing: '0.5px' }}>
-                  {dsTopic === 'invert' && 'INVERT BINARY TREE'}
+                  {dsTopic === 'binary-search-tree' && 'BINARY SEARCH (BST)'}
                   {dsTopic === 'inorder' && 'IN-ORDER TRAVERSAL (BST)'}
                   {dsTopic === 'bfs-queue' && 'BREADTH FIRST SEARCH (TREE)'}
-                  {dsTopic === 'graph-bfs' && 'GRAPH BFS TRAVERSAL'}
+                  {dsTopic === 'graph' && `${graphType.toUpperCase().replace('-', ' ')} (${graphTraversalAlgo.toUpperCase()})`}
                   {dsTopic === 'linked-list' && 'SINGLY LINKED LIST'}
                 </h3>
               </div>
-              <span style={{ fontSize: '11px', color: '#94a3b8', background: '#1e293b', padding: '4px 8px', borderRadius: '8px', fontFamily: 'monospace' }}>
-                {dsTopic === 'graph-bfs' ? 'TIME O(V+E)' : dsTopic === 'linked-list' ? 'INSERT: O(1) | SEARCH: O(N)' : 'TIME O(N)'}
-              </span>
             </div>
 
             {/* Canvas Viewport */}
@@ -1794,7 +1666,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Linked List Interactive Input Row */}
+            {/* Linked List Controls */}
             {dsTopic === 'linked-list' && (
               <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', background: '#0d131f', borderTop: '1px solid #1e293b', alignItems: 'center' }}>
                 <input
@@ -1813,7 +1685,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Live Stack & Queue Trackers (for Tree & Graph) */}
+            {/* Stack & Queue Visualizer */}
             {dsTopic !== 'linked-list' && (
               <div style={{ display: 'flex', gap: '8px', padding: '10px 14px', background: '#0d131f', borderTop: '1px solid #1e293b' }}>
                 <div style={{ flex: 1, border: '1px solid #1e293b', borderRadius: '8px', padding: '6px' }}>
@@ -1839,88 +1711,38 @@ export default function App() {
               </div>
             )}
 
-            {/* Code Highlighting Window */}
-            <div style={{ background: '#020617', padding: '12px 16px', borderTop: '1px solid #1e293b' }}>
-              <div style={{ fontSize: '10px', color: '#475569', marginBottom: '6px' }}>● ● ● algorithm.py</div>
-              <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: '11px', lineHeight: '1.5' }}>
-                {dsTopic === 'invert' && (
-                  <>
-                    <div style={{ color: activeCodeLine === 1 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 1 ? 'bold' : 'normal' }}>1: def invert(node):</div>
-                    <div style={{ color: activeCodeLine === 2 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 2 ? 'bold' : 'normal' }}>2:     if node is None: return None</div>
-                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     node.left, node.right = node.right, node.left</div>
-                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     invert(node.left)</div>
-                    <div style={{ color: activeCodeLine === 5 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 5 ? 'bold' : 'normal' }}>5:     invert(node.right)</div>
-                  </>
-                )}
-                {dsTopic === 'inorder' && (
-                  <>
-                    <div style={{ color: activeCodeLine === 1 ? '#38bdf8' : '#64748b' }}>1: def inorder(node):</div>
-                    <div style={{ color: activeCodeLine === 2 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 2 ? 'bold' : 'normal' }}>2:     inorder(node.left) # Recurse Left</div>
-                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     visit(node.val)    # Print In Sorted Order</div>
-                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     inorder(node.right)# Recurse Right</div>
-                  </>
-                )}
-                {dsTopic === 'bfs-queue' && (
-                  <>
-                    <div style={{ color: '#64748b' }}>1: queue = [root]</div>
-                    <div style={{ color: '#64748b' }}>2: while queue:</div>
-                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     curr = queue.pop(0) # FIFO Dequeue</div>
-                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     if curr.left: queue.append(curr.left)</div>
-                    <div style={{ color: activeCodeLine === 5 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 5 ? 'bold' : 'normal' }}>5:     if curr.right: queue.append(curr.right)</div>
-                  </>
-                )}
-                {dsTopic === 'graph-bfs' && (
-                  <>
-                    <div style={{ color: '#64748b' }}>1: visited = Set([start])</div>
-                    <div style={{ color: '#64748b' }}>2: queue = [start]</div>
-                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3: curr = queue.pop(0) # Explore Node</div>
-                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4: for neighbor in graph[curr]: queue.push(neighbor)</div>
-                  </>
-                )}
-                {dsTopic === 'linked-list' && (
-                  <>
-                    <div style={{ color: '#64748b' }}>1: curr = head</div>
-                    <div style={{ color: activeCodeLine === 2 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 2 ? 'bold' : 'normal' }}>2: while curr is not None:</div>
-                    <div style={{ color: activeCodeLine === 3 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 3 ? 'bold' : 'normal' }}>3:     visit(curr.data)</div>
-                    <div style={{ color: activeCodeLine === 4 ? '#38bdf8' : '#64748b', fontWeight: activeCodeLine === 4 ? 'bold' : 'normal' }}>4:     curr = curr.next # Move to next node</div>
-                  </>
-                )}
-              </pre>
-            </div>
-
-            {/* Floating Action Controls */}
-            <div style={{ position: 'absolute', right: '14px', bottom: dsTopic === 'linked-list' ? '180px' : '130px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Action Buttons */}
+            <div style={{ padding: '12px', display: 'flex', justifyContent: 'center', gap: '10px', background: '#0b1320' }}>
               <button
                 className="v-btn v-btn-play"
-                style={{ width: '42px', height: '42px', borderRadius: '50%', padding: 0 }}
+                style={{ padding: '6px 16px', fontSize: '12px' }}
                 onClick={() => {
                   if (reelPlaying) {
                     handleResetReel();
                   } else {
-                    if (dsTopic === 'invert') runInvertReel();
+                    if (dsTopic === 'binary-search-tree') runBinarySearchInTree();
                     else if (dsTopic === 'inorder') runInorderReelWithBackend();
                     else if (dsTopic === 'bfs-queue') runBFSQueueReel();
-                    else if (dsTopic === 'graph-bfs') runGraphBFSReel();
-                    else if (dsTopic === 'linked-list') runLinkedListWithBackend();
+                    else if (dsTopic === 'graph') {
+                      if (graphTraversalAlgo === 'bfs') runGraphBFS();
+                      else runGraphDFS();
+                    } else if (dsTopic === 'linked-list') {
+                      runLinkedListWithBackend();
+                    }
                   }
                 }}
               >
-                {reelPlaying ? '⏸' : '▶'}
+                {reelPlaying ? '⏸ Pause' : '▶ Play Visualization'}
               </button>
-              <button
-                className="v-btn"
-                style={{ width: '42px', height: '42px', borderRadius: '50%', padding: 0 }}
-                onClick={handleResetReel}
-                title="Reset animation"
-              >
-                ↺
+              <button className="v-btn" style={{ padding: '6px 16px', fontSize: '12px' }} onClick={handleResetReel}>
+                ↺ Reset
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Auth Modal */}
+      {/* Auth Modal (Simple) */}
       {showAuthModal && (
         <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
           <div className="glass-box modal-box" onClick={(e) => e.stopPropagation()}>
